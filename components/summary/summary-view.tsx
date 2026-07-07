@@ -6,6 +6,7 @@ import type { SelectionCorrelation, SelectionField } from "@/lib/metrics/selecti
 import { KpiTiles } from "./kpi-tiles";
 import { FunnelCharts } from "./funnel-charts";
 import { SelectionInsights } from "./selection-insights";
+import { Trends, type TrendPoint } from "./trends";
 
 export interface SummaryMetrics {
   totalLinks: number;
@@ -42,12 +43,14 @@ export function SummaryView({
   moduleDropOff,
   selectionDistribution,
   selectionCorrelation,
+  trends,
 }: {
   range: string;
   summary: SummaryMetrics;
   moduleDropOff: ModuleDropOff[];
   selectionDistribution: SelectionField[];
   selectionCorrelation: SelectionCorrelation[];
+  trends: { weekly: TrendPoint[]; monthly: TrendPoint[] };
 }) {
   return (
     <div className="space-y-6">
@@ -64,7 +67,7 @@ export function SummaryView({
 
       <SelectionInsights distribution={selectionDistribution} correlation={selectionCorrelation} />
 
-      <Section title="Trends" note="Trends over time and before/after comparison arrive in COR2-18." />
+      <Trends weekly={trends.weekly} monthly={trends.monthly} />
     </div>
   );
 }
