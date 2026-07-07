@@ -1,6 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { KpiTiles } from "./kpi-tiles";
 
 export interface SummaryMetrics {
   totalLinks: number;
@@ -13,17 +14,9 @@ export interface SummaryMetrics {
   lifecycle: Record<"in_progress" | "completed" | "expired" | "submission_failed", number>;
 }
 
-function formatPercent(ratio: number): string {
-  return `${Math.round(ratio * 100)}%`;
-}
-
-function formatDays(ms: number): string {
-  return `${(ms / (24 * 60 * 60 * 1000)).toFixed(1)} days`;
-}
-
-// A labeled placeholder section. Later milestone-5 issues replace the body of
-// each with real tiles and charts.
-function Section({ title, note, children }: { title: string; note: string; children?: React.ReactNode }) {
+// A labeled placeholder section. Later milestone-5 issues replace these with the
+// real charts and controls.
+function Section({ title, note }: { title: string; note: string }) {
   return (
     <Card>
       <CardHeader>
@@ -31,14 +24,14 @@ function Section({ title, note, children }: { title: string; note: string; child
           {title}
         </CardTitle>
       </CardHeader>
-      <CardContent>{children ?? <p className="text-sm text-muted-foreground">{note}</p>}</CardContent>
+      <CardContent>
+        <p className="text-sm text-muted-foreground">{note}</p>
+      </CardContent>
     </Card>
   );
 }
 
-// Client shell for the company summary. It arranges the sections (desktop-first)
-// and, for now, renders the computed metrics as a minimal preview inside the KPI
-// slot so data loading is visible end to end.
+// Client shell for the company summary. Arranges the sections (desktop-first).
 export function SummaryView({ range, summary }: { range: string; summary: SummaryMetrics }) {
   return (
     <div className="space-y-6">
@@ -47,27 +40,9 @@ export function SummaryView({ range, summary }: { range: string; summary: Summar
         <p className="text-sm text-muted-foreground">Onboarding funnel across all accounts.</p>
       </div>
 
-      <Section title="Filters" note="Date-range and breakdown controls arrive in COR2-19.">
-        <p className="text-sm text-muted-foreground">
-          Date range: <span className="font-medium text-foreground">{range}</span>
-        </p>
-      </Section>
+      <Section title="Filters" note={`Date range: ${range}. Controls arrive in COR2-19.`} />
 
-      <Section title="KPI tiles" note="Styled tiles arrive in COR2-15.">
-        <ul className="grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
-          <li>Links generated: <strong className="text-foreground">{summary.totalLinks}</strong></li>
-          <li>Completions: <strong className="text-foreground">{summary.totalCompletions}</strong></li>
-          <li>Completion rate: <strong className="text-foreground">{formatPercent(summary.completionRate)}</strong></li>
-          <li>Avg progress: <strong className="text-foreground">{formatPercent(summary.avgProgress)}</strong></li>
-          <li>Submissions: <strong className="text-foreground">{summary.totalSubmissions}</strong></li>
-          <li>
-            Avg time to complete:{" "}
-            <strong className="text-foreground">
-              {summary.timeToComplete ? formatDays(summary.timeToComplete.meanMs) : "n/a"}
-            </strong>
-          </li>
-        </ul>
-      </Section>
+      <KpiTiles summary={summary} />
 
       <Section title="Funnel and drop-off" note="Lifecycle and module drop-off charts arrive in COR2-16." />
       <Section title="Selection insights" note="Selection distribution and correlation arrive in COR2-17." />
