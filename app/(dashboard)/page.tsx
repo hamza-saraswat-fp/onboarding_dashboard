@@ -1,5 +1,12 @@
 import { listSessions, listModuleData, listImportJobs } from "@/lib/queries/sessions";
-import { filterByDateRange, bucketByWeek, bucketByMonth, type SessionBucket } from "@/lib/metrics/filters";
+import {
+  filterByDateRange,
+  bucketByWeek,
+  bucketByMonth,
+  groupByDimension,
+  type SessionBucket,
+  type Dimension,
+} from "@/lib/metrics/filters";
 import {
   totalLinks,
   totalCompletions,
@@ -12,6 +19,7 @@ import { moduleDropOff } from "@/lib/metrics/modules";
 import { selectionDistribution, selectionCompletionCorrelation } from "@/lib/metrics/selections";
 import { SummaryView, type SummaryMetrics } from "@/components/summary/summary-view";
 import type { TrendPoint } from "@/components/summary/trends";
+import type { BreakdownRow } from "@/components/summary/breakdown-table";
 
 // The summary reads live data per request; never statically prerender it.
 export const dynamic = "force-dynamic";
@@ -28,6 +36,16 @@ const RANGE_DAYS: Record<string, number | null> = {
 
 function resolveRange(range: string | undefined): string {
   return range && range in RANGE_DAYS ? range : "30d";
+}
+
+const DIMENSION_LABELS: Record<Dimension, string> = {
+  salesSegment: "Sales Segment",
+  industry: "Industry",
+  numberOfEmployees: "Number of Employees",
+};
+
+function resolveDimension(value: string | undefined): Dimension | null {
+  return value === "salesSegment" || value === "industry" || value === "numberOfEmployees" ? value : null;
 }
 
 // One trend point per time bucket, reusing the metric functions. Rates are
@@ -48,10 +66,11 @@ function toTrendPoint(bucket: SessionBucket): TrendPoint {
 export default async function SummaryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ range?: string; breakdown?: string }>;
 }) {
   const params = await searchParams;
   const range = resolveRange(params.range);
+  const dimension = resolveDimension(params.breakdown);
   const days = RANGE_DAYS[range];
 
   const [allSessions, allModuleData, allImportJobs] = await Promise.all([
@@ -98,14 +117,37 @@ export default async function SummaryPage({
     monthly: bucketByMonth(allSessions).map(toTrendPoint),
   };
 
+  // When a breakdown dimension is active, group the (date-scoped) sessions and
+  // compute the key metrics per group.
+  let breakdownData: { dimension: string; rows: BreakdownRow[] } | null = null;
+  if (dimension) {
+    const groups = groupByDimension(sessions, dimension);
+    const rows: BreakdownRow[] = Object.entries(groups)
+      .map(([value, groupSessions]) => {
+        const ids = new Set(groupSessions.map((s) => s.id));
+        const groupModules = moduleData.filter((m) => ids.has(m.sessionId));
+        return {
+          value,
+          totalLinks: totalLinks(groupSessions),
+          totalCompletions: totalCompletions(groupSessions),
+          completionRate: completionRate(groupSessions),
+          avgProgress: avgProgress(groupSessions, groupModules),
+        };
+      })
+      .sort((a, b) => b.totalLinks - a.totalLinks);
+    breakdownData = { dimension: DIMENSION_LABELS[dimension], rows };
+  }
+
   return (
     <SummaryView
       range={range}
+      breakdown={dimension ?? "none"}
       summary={summary}
       moduleDropOff={dropOff}
       selectionDistribution={distribution}
       selectionCorrelation={correlation}
       trends={trends}
+      breakdownData={breakdownData}
     />
   );
 }
