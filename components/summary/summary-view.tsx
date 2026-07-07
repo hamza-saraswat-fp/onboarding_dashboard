@@ -1,12 +1,13 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ModuleDropOff } from "@/lib/metrics/modules";
 import type { SelectionCorrelation, SelectionField } from "@/lib/metrics/selections";
 import { KpiTiles } from "./kpi-tiles";
 import { FunnelCharts } from "./funnel-charts";
 import { SelectionInsights } from "./selection-insights";
 import { Trends, type TrendPoint } from "./trends";
+import { Filters } from "./filters";
+import { BreakdownTable, type BreakdownRow } from "./breakdown-table";
 
 export interface SummaryMetrics {
   totalLinks: number;
@@ -19,38 +20,26 @@ export interface SummaryMetrics {
   lifecycle: Record<"in_progress" | "completed" | "expired" | "submission_failed", number>;
 }
 
-// A labeled placeholder section. Later milestone-5 issues replace these with the
-// real charts and controls.
-function Section({ title, note }: { title: string; note: string }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">{note}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
-// Client shell for the company summary. Arranges the sections (desktop-first).
+// Client shell for the company summary. Arranges the controls, tiles, and charts
+// (desktop-first). All heavy computation happens on the page.
 export function SummaryView({
   range,
+  breakdown,
   summary,
   moduleDropOff,
   selectionDistribution,
   selectionCorrelation,
   trends,
+  breakdownData,
 }: {
   range: string;
+  breakdown: string;
   summary: SummaryMetrics;
   moduleDropOff: ModuleDropOff[];
   selectionDistribution: SelectionField[];
   selectionCorrelation: SelectionCorrelation[];
   trends: { weekly: TrendPoint[]; monthly: TrendPoint[] };
+  breakdownData: { dimension: string; rows: BreakdownRow[] } | null;
 }) {
   return (
     <div className="space-y-6">
@@ -59,9 +48,11 @@ export function SummaryView({
         <p className="text-sm text-muted-foreground">Onboarding funnel across all accounts.</p>
       </div>
 
-      <Section title="Filters" note={`Date range: ${range}. Controls arrive in COR2-19.`} />
+      <Filters range={range} breakdown={breakdown} />
 
       <KpiTiles summary={summary} />
+
+      {breakdownData ? <BreakdownTable dimensionLabel={breakdownData.dimension} rows={breakdownData.rows} /> : null}
 
       <FunnelCharts lifecycle={summary.lifecycle} moduleDropOff={moduleDropOff} />
 
