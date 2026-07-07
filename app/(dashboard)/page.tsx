@@ -8,6 +8,7 @@ import {
   timeToComplete,
   lifecycleBreakdown,
 } from "@/lib/metrics/summary";
+import { moduleDropOff } from "@/lib/metrics/modules";
 import { SummaryView, type SummaryMetrics } from "@/components/summary/summary-view";
 
 // The summary reads live data per request; never statically prerender it.
@@ -69,5 +70,7 @@ export default async function SummaryPage({
     lifecycle: lifecycleBreakdown(sessions),
   };
 
-  return <SummaryView range={range} summary={summary} />;
+  const dropOff = moduleDropOff(sessions, moduleData);
+
+  return <SummaryView range={range} summary={summary} moduleDropOff={dropOff} />;
 }
