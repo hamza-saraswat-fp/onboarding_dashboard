@@ -1,5 +1,6 @@
 "use client";
 
+import { Card, CardContent } from "@/components/ui/card";
 import type { ModuleDropOff } from "@/lib/metrics/modules";
 import type { SelectionCorrelation, SelectionField } from "@/lib/metrics/selections";
 import { KpiTiles } from "./kpi-tiles";
@@ -53,17 +54,29 @@ export function SummaryView({
 
       <Filters range={range} breakdown={breakdown} />
 
-      <KpiTiles summary={summary} />
+      {summary.totalLinks === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center text-sm text-muted-foreground">
+            No onboarding links in the selected range. Try a wider date range.
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <KpiTiles summary={summary} />
 
-      {breakdownData ? <BreakdownTable dimensionLabel={breakdownData.dimension} rows={breakdownData.rows} /> : null}
+          {breakdownData ? (
+            <BreakdownTable dimensionLabel={breakdownData.dimension} rows={breakdownData.rows} />
+          ) : null}
 
-      <FunnelCharts lifecycle={summary.lifecycle} moduleDropOff={moduleDropOff} />
+          <FunnelCharts lifecycle={summary.lifecycle} moduleDropOff={moduleDropOff} />
 
-      <SelectionInsights distribution={selectionDistribution} correlation={selectionCorrelation} />
+          <SelectionInsights distribution={selectionDistribution} correlation={selectionCorrelation} />
 
-      <Trends weekly={trends.weekly} monthly={trends.monthly} />
+          <Trends weekly={trends.weekly} monthly={trends.monthly} />
 
-      <SessionsTable rows={sessionRows} />
+          <SessionsTable rows={sessionRows} />
+        </>
+      )}
     </div>
   );
 }

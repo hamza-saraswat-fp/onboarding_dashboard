@@ -29,4 +29,8 @@ describe("getAccountDetail", () => {
   it("returns null for an unknown id", async () => {
     expect(await getAccountDetail(MISSING)).toBeNull();
   });
+
+  it("returns null for a malformed id without hitting the database", async () => {
+    expect(await getAccountDetail("not-a-uuid")).toBeNull();
+  });
 });
