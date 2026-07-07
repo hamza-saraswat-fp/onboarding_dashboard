@@ -18,7 +18,13 @@ export interface AccountDetail {
   submitResults: ImportJob[]; // per-module submit results at Complete Setup
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function getAccountDetail(sessionId: string): Promise<AccountDetail | null> {
+  // Guard malformed ids (a user-supplied URL segment) so a bad id returns
+  // not-found instead of a Postgres uuid-cast error.
+  if (!UUID_RE.test(sessionId)) return null;
+
   const session = await getSession(sessionId);
   if (!session) return null;
 
