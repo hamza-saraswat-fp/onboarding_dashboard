@@ -25,7 +25,7 @@ describe("session queries", () => {
     expect(session?.companyId).toBe("company-1");
     expect(session?.status).toBe("completed");
     expect(session?.currentModule).toBe(8);
-    expect(session?.salesforceData).toMatchObject({ sales_segment: "SMB", industry: "HVAC" });
+    expect(session?.salesforceData).toMatchObject({ salesSegment: "SMB", industry: "HVAC" });
     expect(session?.createdAt).toBeInstanceOf(Date);
     expect(session?.submittedAt).toBeInstanceOf(Date);
     expect(session?.expiresAt).toBeInstanceOf(Date);
