@@ -23,7 +23,7 @@ describe("getAccountDetail", () => {
     expect(account?.submitResults.every((r) => r.status === "success")).toBe(true);
     expect(account?.createdAt).toBeInstanceOf(Date);
     expect(account?.submittedAt).toBeInstanceOf(Date);
-    expect(account?.salesforceData).toMatchObject({ sales_segment: "SMB" });
+    expect(account?.salesforceData).toMatchObject({ salesSegment: "SMB" });
   });
 
   it("returns null for an unknown id", async () => {
