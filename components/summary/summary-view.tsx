@@ -1,7 +1,9 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { ModuleDropOff } from "@/lib/metrics/modules";
 import { KpiTiles } from "./kpi-tiles";
+import { FunnelCharts } from "./funnel-charts";
 
 export interface SummaryMetrics {
   totalLinks: number;
@@ -32,7 +34,15 @@ function Section({ title, note }: { title: string; note: string }) {
 }
 
 // Client shell for the company summary. Arranges the sections (desktop-first).
-export function SummaryView({ range, summary }: { range: string; summary: SummaryMetrics }) {
+export function SummaryView({
+  range,
+  summary,
+  moduleDropOff,
+}: {
+  range: string;
+  summary: SummaryMetrics;
+  moduleDropOff: ModuleDropOff[];
+}) {
   return (
     <div className="space-y-6">
       <div>
@@ -44,7 +54,8 @@ export function SummaryView({ range, summary }: { range: string; summary: Summar
 
       <KpiTiles summary={summary} />
 
-      <Section title="Funnel and drop-off" note="Lifecycle and module drop-off charts arrive in COR2-16." />
+      <FunnelCharts lifecycle={summary.lifecycle} moduleDropOff={moduleDropOff} />
+
       <Section title="Selection insights" note="Selection distribution and correlation arrive in COR2-17." />
       <Section title="Trends" note="Trends over time and before/after comparison arrive in COR2-18." />
     </div>
