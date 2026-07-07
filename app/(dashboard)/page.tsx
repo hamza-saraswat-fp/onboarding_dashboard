@@ -20,6 +20,7 @@ import { selectionDistribution, selectionCompletionCorrelation } from "@/lib/met
 import { SummaryView, type SummaryMetrics } from "@/components/summary/summary-view";
 import type { TrendPoint } from "@/components/summary/trends";
 import type { BreakdownRow } from "@/components/summary/breakdown-table";
+import type { SessionRow } from "@/components/summary/sessions-table";
 
 // The summary reads live data per request; never statically prerender it.
 export const dynamic = "force-dynamic";
@@ -138,6 +139,25 @@ export default async function SummaryPage({
     breakdownData = { dimension: DIMENSION_LABELS[dimension], rows };
   }
 
+  // Per-account rows for the sessions table, reusing the loaded data.
+  const moduleAgg = new Map<string, { total: number; complete: number }>();
+  for (const m of moduleData) {
+    const agg = moduleAgg.get(m.sessionId) ?? { total: 0, complete: 0 };
+    agg.total += 1;
+    if (m.isComplete) agg.complete += 1;
+    moduleAgg.set(m.sessionId, agg);
+  }
+  const sessionRows: SessionRow[] = sessions.map((s) => {
+    const agg = moduleAgg.get(s.id);
+    return {
+      id: s.id,
+      companyId: s.companyId,
+      status: s.status,
+      progress: agg && agg.total > 0 ? agg.complete / agg.total : 0,
+      createdAt: s.createdAt,
+    };
+  });
+
   return (
     <SummaryView
       range={range}
@@ -148,6 +168,7 @@ export default async function SummaryPage({
       selectionCorrelation={correlation}
       trends={trends}
       breakdownData={breakdownData}
+      sessionRows={sessionRows}
     />
   );
 }

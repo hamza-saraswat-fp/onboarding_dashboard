@@ -8,6 +8,7 @@ import { SelectionInsights } from "./selection-insights";
 import { Trends, type TrendPoint } from "./trends";
 import { Filters } from "./filters";
 import { BreakdownTable, type BreakdownRow } from "./breakdown-table";
+import { SessionsTable, type SessionRow } from "./sessions-table";
 
 export interface SummaryMetrics {
   totalLinks: number;
@@ -31,6 +32,7 @@ export function SummaryView({
   selectionCorrelation,
   trends,
   breakdownData,
+  sessionRows,
 }: {
   range: string;
   breakdown: string;
@@ -40,6 +42,7 @@ export function SummaryView({
   selectionCorrelation: SelectionCorrelation[];
   trends: { weekly: TrendPoint[]; monthly: TrendPoint[] };
   breakdownData: { dimension: string; rows: BreakdownRow[] } | null;
+  sessionRows: SessionRow[];
 }) {
   return (
     <div className="space-y-6">
@@ -59,6 +62,8 @@ export function SummaryView({
       <SelectionInsights distribution={selectionDistribution} correlation={selectionCorrelation} />
 
       <Trends weekly={trends.weekly} monthly={trends.monthly} />
+
+      <SessionsTable rows={sessionRows} />
     </div>
   );
 }
