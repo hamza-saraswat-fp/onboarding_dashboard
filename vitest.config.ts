@@ -2,6 +2,10 @@ import { defineConfig } from "vitest/config";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL ?? "postgres://localhost:5432/onboarding_dash_test";
 
+// Run tests in UTC so date bucketing is deterministic regardless of the
+// developer's local timezone. Forked workers inherit this from the environment.
+process.env.TZ = "UTC";
+
 export default defineConfig({
   test: {
     environment: "node",
@@ -9,10 +13,11 @@ export default defineConfig({
     globalSetup: ["./db/test-db.ts"],
     // Inject the local test DB as DATABASE_URL for the test environment so the
     // app's db client (added in a later issue) reads the seeded test database,
-    // never the real onboarding Supabase.
+    // never the real onboarding Supabase. TZ keeps date buckets deterministic.
     env: {
       TEST_DATABASE_URL,
       DATABASE_URL: TEST_DATABASE_URL,
+      TZ: "UTC",
     },
   },
 });
