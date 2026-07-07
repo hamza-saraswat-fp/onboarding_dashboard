@@ -1,5 +1,5 @@
 import { listSessions, listModuleData, listImportJobs } from "@/lib/queries/sessions";
-import { filterByDateRange } from "@/lib/metrics/filters";
+import { filterByDateRange, bucketByWeek, bucketByMonth, type SessionBucket } from "@/lib/metrics/filters";
 import {
   totalLinks,
   totalCompletions,
@@ -11,6 +11,7 @@ import {
 import { moduleDropOff } from "@/lib/metrics/modules";
 import { selectionDistribution, selectionCompletionCorrelation } from "@/lib/metrics/selections";
 import { SummaryView, type SummaryMetrics } from "@/components/summary/summary-view";
+import type { TrendPoint } from "@/components/summary/trends";
 
 // The summary reads live data per request; never statically prerender it.
 export const dynamic = "force-dynamic";
@@ -27,6 +28,21 @@ const RANGE_DAYS: Record<string, number | null> = {
 
 function resolveRange(range: string | undefined): string {
   return range && range in RANGE_DAYS ? range : "30d";
+}
+
+// One trend point per time bucket, reusing the metric functions. Rates are
+// derived from the bucket's own sessions so aggregation stays correct.
+function toTrendPoint(bucket: SessionBucket): TrendPoint {
+  const rate = completionRate(bucket.sessions);
+  const ttc = timeToComplete(bucket.sessions);
+  return {
+    key: bucket.key,
+    volume: bucket.sessions.length,
+    completions: totalCompletions(bucket.sessions),
+    completionRate: rate,
+    dropOffRate: 1 - rate,
+    avgTimeToCompleteMs: ttc ? ttc.meanMs : null,
+  };
 }
 
 export default async function SummaryPage({
@@ -75,6 +91,13 @@ export default async function SummaryPage({
   const distribution = selectionDistribution(moduleData);
   const correlation = selectionCompletionCorrelation(sessions, moduleData);
 
+  // Trends span the full history (independent of the KPI date range) so the
+  // timeline has enough buckets to be meaningful.
+  const trends = {
+    weekly: bucketByWeek(allSessions).map(toTrendPoint),
+    monthly: bucketByMonth(allSessions).map(toTrendPoint),
+  };
+
   return (
     <SummaryView
       range={range}
@@ -82,6 +105,7 @@ export default async function SummaryPage({
       moduleDropOff={dropOff}
       selectionDistribution={distribution}
       selectionCorrelation={correlation}
+      trends={trends}
     />
   );
 }
