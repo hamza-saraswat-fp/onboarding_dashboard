@@ -9,6 +9,7 @@ import {
   lifecycleBreakdown,
 } from "@/lib/metrics/summary";
 import { moduleDropOff } from "@/lib/metrics/modules";
+import { selectionDistribution, selectionCompletionCorrelation } from "@/lib/metrics/selections";
 import { SummaryView, type SummaryMetrics } from "@/components/summary/summary-view";
 
 // The summary reads live data per request; never statically prerender it.
@@ -71,6 +72,16 @@ export default async function SummaryPage({
   };
 
   const dropOff = moduleDropOff(sessions, moduleData);
+  const distribution = selectionDistribution(moduleData);
+  const correlation = selectionCompletionCorrelation(sessions, moduleData);
 
-  return <SummaryView range={range} summary={summary} moduleDropOff={dropOff} />;
+  return (
+    <SummaryView
+      range={range}
+      summary={summary}
+      moduleDropOff={dropOff}
+      selectionDistribution={distribution}
+      selectionCorrelation={correlation}
+    />
+  );
 }

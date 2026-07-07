@@ -2,8 +2,10 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ModuleDropOff } from "@/lib/metrics/modules";
+import type { SelectionCorrelation, SelectionField } from "@/lib/metrics/selections";
 import { KpiTiles } from "./kpi-tiles";
 import { FunnelCharts } from "./funnel-charts";
+import { SelectionInsights } from "./selection-insights";
 
 export interface SummaryMetrics {
   totalLinks: number;
@@ -38,10 +40,14 @@ export function SummaryView({
   range,
   summary,
   moduleDropOff,
+  selectionDistribution,
+  selectionCorrelation,
 }: {
   range: string;
   summary: SummaryMetrics;
   moduleDropOff: ModuleDropOff[];
+  selectionDistribution: SelectionField[];
+  selectionCorrelation: SelectionCorrelation[];
 }) {
   return (
     <div className="space-y-6">
@@ -56,7 +62,8 @@ export function SummaryView({
 
       <FunnelCharts lifecycle={summary.lifecycle} moduleDropOff={moduleDropOff} />
 
-      <Section title="Selection insights" note="Selection distribution and correlation arrive in COR2-17." />
+      <SelectionInsights distribution={selectionDistribution} correlation={selectionCorrelation} />
+
       <Section title="Trends" note="Trends over time and before/after comparison arrive in COR2-18." />
     </div>
   );
