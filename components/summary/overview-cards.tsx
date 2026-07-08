@@ -52,34 +52,56 @@ export interface VolumePoint {
   count: number;
 }
 
-// Links created per week within the selected range, as compact bars. Answers
-// "are we generating more onboarding links over time" without a full chart.
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// Format an ISO week-start key ("2026-06-02") as "Jun 2" without timezone drift.
+function weekLabel(key: string): string {
+  const [, month, day] = key.split("-");
+  return `${MONTHS[Number(month) - 1]} ${Number(day)}`;
+}
+
+// New links per week within the selected range. Each bar is labeled with its
+// count and week so the trend is readable; the caption gives the total.
 export function VolumeCard({ volume }: { volume: VolumePoint[] }) {
   const max = Math.max(1, ...volume.map((v) => v.count));
   const total = volume.reduce((sum, v) => sum + v.count, 0);
+  // With many weeks, per-bar labels would collide; show counts only when there
+  // is room, and thin the week labels to the two ends.
+  const showAllLabels = volume.length <= 8;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Links over time</CardTitle>
+        <CardTitle>New links per week</CardTitle>
       </CardHeader>
       <CardContent>
         {volume.length === 0 ? (
           <p className="py-4 text-sm text-muted-foreground">No links in this range.</p>
         ) : (
           <div className="space-y-2">
-            <div className="flex h-20 items-end gap-1">
-              {volume.map((v) => (
-                <div
-                  key={v.key}
-                  className="flex-1 rounded-t bg-fp-sky"
-                  style={{ height: `${Math.max(4, (v.count / max) * 100)}%` }}
-                  title={`Week of ${v.key}: ${v.count}`}
-                />
-              ))}
+            <div className="flex items-end gap-1.5">
+              {volume.map((v, i) => {
+                const showLabel = showAllLabels || i === 0 || i === volume.length - 1;
+                return (
+                  <div key={v.key} className="flex flex-1 flex-col items-center gap-1">
+                    {showAllLabels ? (
+                      <span className="text-[11px] tabular-nums text-muted-foreground">{v.count}</span>
+                    ) : null}
+                    <div className="flex h-16 w-full items-end" title={`Week of ${weekLabel(v.key)}: ${v.count}`}>
+                      <div
+                        className="w-full rounded-t bg-fp-sky"
+                        style={{ height: `${Math.max(6, (v.count / max) * 100)}%` }}
+                      />
+                    </div>
+                    <span className="h-3.5 text-[11px] tabular-nums text-muted-foreground">
+                      {showLabel ? weekLabel(v.key) : ""}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
-            <div className="text-xs text-muted-foreground tabular-nums">
-              {total} links across {volume.length} {volume.length === 1 ? "week" : "weeks"}
+            <div className="border-t pt-2 text-xs text-muted-foreground tabular-nums">
+              {total} links total across {volume.length} {volume.length === 1 ? "week" : "weeks"}
             </div>
           </div>
         )}
