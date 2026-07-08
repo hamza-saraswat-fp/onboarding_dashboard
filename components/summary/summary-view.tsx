@@ -9,7 +9,7 @@ import { OnboardingFunnel } from "./onboarding-funnel";
 import { LifecycleCard, VolumeCard, type VolumePoint } from "./overview-cards";
 import { TopSelections } from "./top-selections";
 import { Trends, type TrendPoint } from "./trends";
-import { Filters } from "./filters";
+import { RangeFilter, BreakdownFilter } from "./filters";
 import { BreakdownTable, type BreakdownRow } from "./breakdown-table";
 import { AccountsTable } from "./accounts-table";
 
@@ -54,14 +54,15 @@ export function SummaryView({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">Overview</h1>
-        <p className="text-sm text-muted-foreground">
-          Onboarding funnel for the selected range, and every account.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">Overview</h1>
+          <p className="text-sm text-muted-foreground">
+            Onboarding funnel for the selected range, and every account.
+          </p>
+        </div>
+        <RangeFilter range={range} />
       </div>
-
-      <Filters range={range} breakdown={breakdown} />
 
       <KpiTiles summary={summary} />
 
@@ -82,7 +83,7 @@ export function SummaryView({
           aria-expanded={showInsights}
           className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left"
         >
-          <span className="text-base font-medium text-foreground">Trends, selections and breakdowns</span>
+          <span className="text-base font-medium text-foreground">Trends, selections, and breakdowns</span>
           <span className="flex items-center gap-2 text-sm text-muted-foreground">
             {showInsights ? "Hide" : "Show"}
             <svg
@@ -102,6 +103,7 @@ export function SummaryView({
 
         {showInsights ? (
           <div className="space-y-4 border-t px-4 py-4">
+            <BreakdownFilter breakdown={breakdown} />
             {breakdownData ? (
               <BreakdownTable dimensionLabel={breakdownData.dimension} rows={breakdownData.rows} />
             ) : null}
