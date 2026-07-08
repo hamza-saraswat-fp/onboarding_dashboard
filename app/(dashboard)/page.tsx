@@ -16,7 +16,7 @@ import {
   lifecycleBreakdown,
 } from "@/lib/metrics/summary";
 import { moduleDropOff } from "@/lib/metrics/modules";
-import { topSelections } from "@/lib/metrics/selections";
+import { topSelectionsBySection } from "@/lib/metrics/selections";
 import { SummaryView, type SummaryMetrics } from "@/components/summary/summary-view";
 import type { TrendPoint } from "@/components/summary/trends";
 import type { BreakdownRow } from "@/components/summary/breakdown-table";
@@ -109,8 +109,9 @@ export default async function SummaryPage({
 
   const dropOff = moduleDropOff(sessions, moduleData);
 
-  // Highest-volume selections within the selected range (company metric).
-  const topPicks = topSelections(moduleData);
+  // Highest-volume selections within the selected range (company metric),
+  // grouped into the curated sections.
+  const topPicks = topSelectionsBySection(moduleData);
 
   // Links created per week within the selected range, for the overview strip.
   const volume = bucketByWeek(sessions).map((b) => ({ key: b.key, count: b.sessions.length }));

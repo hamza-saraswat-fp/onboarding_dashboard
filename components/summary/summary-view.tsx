@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { ModuleDropOff } from "@/lib/metrics/modules";
-import type { TopSelection } from "@/lib/metrics/selections";
+import type { SelectionSection } from "@/lib/metrics/selections";
 import type { AccountRow } from "@/lib/queries/account";
 import { KpiTiles } from "./kpi-tiles";
 import { OnboardingFunnel } from "./onboarding-funnel";
@@ -44,7 +44,7 @@ export function SummaryView({
   summary: SummaryMetrics;
   moduleDropOff: ModuleDropOff[];
   volume: VolumePoint[];
-  topSelections: TopSelection[];
+  topSelections: SelectionSection[];
   trends: { weekly: TrendPoint[]; monthly: TrendPoint[] };
   breakdownData: { dimension: string; rows: BreakdownRow[] } | null;
   accountRows: AccountRow[];
@@ -103,11 +103,13 @@ export function SummaryView({
 
         {showInsights ? (
           <div className="space-y-4 border-t px-4 py-4">
-            <BreakdownFilter breakdown={breakdown} />
+            <div className="flex justify-end">
+              <BreakdownFilter breakdown={breakdown} />
+            </div>
             {breakdownData ? (
               <BreakdownTable dimensionLabel={breakdownData.dimension} rows={breakdownData.rows} />
             ) : null}
-            <TopSelections rows={topSelections} />
+            <TopSelections sections={topSelections} />
             <Trends weekly={trends.weekly} monthly={trends.monthly} />
           </div>
         ) : null}

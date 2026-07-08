@@ -12,9 +12,9 @@ const RANGES = [
 
 const BREAKDOWNS = [
   { value: "none", label: "None" },
-  { value: "salesSegment", label: "Sales Segment" },
   { value: "industry", label: "Industry" },
   { value: "numberOfEmployees", label: "Employees" },
+  { value: "salesSegment", label: "Sales Segment" },
 ];
 
 // Both controls write the page's URL search params; the Server Component reads
