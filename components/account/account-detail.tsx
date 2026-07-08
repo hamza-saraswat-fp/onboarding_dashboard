@@ -67,21 +67,31 @@ function SubmitBadge({ status }: { status: ImportJobStatus }) {
   return <Badge variant="outline">{status}</Badge>;
 }
 
-export function AccountDetail({ account }: { account: AccountDetailData }) {
+// showHeader is false when this renders inside the account drawer, which supplies
+// its own header (company name + status), so we skip the redundant title block.
+export function AccountDetail({
+  account,
+  showHeader = true,
+}: {
+  account: AccountDetailData;
+  showHeader?: boolean;
+}) {
   const completed = account.moduleSelections.filter((m) => m.isComplete).length;
   const total = account.moduleSelections.length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Account {account.companyId}</h1>
-          <p className="text-sm text-muted-foreground">Session {account.sessionId}</p>
+    <div className="@container space-y-6">
+      {showHeader ? (
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground">Account {account.companyId}</h1>
+            <p className="text-sm text-muted-foreground">Session {account.sessionId}</p>
+          </div>
+          <StatusBadge status={account.status} />
         </div>
-        <StatusBadge status={account.status} />
-      </div>
+      ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 @xl:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Progress</CardTitle>
@@ -166,11 +176,11 @@ export function AccountDetail({ account }: { account: AccountDetailData }) {
                   {entries.length === 0 ? (
                     <p className="text-xs text-muted-foreground">No data.</p>
                   ) : (
-                    <dl className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
+                    <dl className="grid grid-cols-1 gap-x-6 gap-y-1 @xl:grid-cols-2">
                       {entries.map(([key, value]) => (
                         <div key={key} className="flex justify-between gap-4 text-sm">
-                          <dt className="text-muted-foreground">{formatKey(key)}</dt>
-                          <dd className="text-right text-foreground">{renderValue(value)}</dd>
+                          <dt className="shrink-0 text-muted-foreground">{formatKey(key)}</dt>
+                          <dd className="min-w-0 break-words text-right text-foreground">{renderValue(value)}</dd>
                         </div>
                       ))}
                     </dl>

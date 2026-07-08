@@ -5,12 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { AccountDrawer } from "@/components/account/account-drawer";
+import { StatusPill } from "@/components/account/status-pill";
 import type { WizardStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export interface AccountRow {
   id: string;
   companyId: string;
+  companyName: string | null;
   status: WizardStatus;
   progress: number; // 0..1
   modulesComplete: number;
@@ -20,12 +22,11 @@ export interface AccountRow {
 
 const PAGE_SIZE = 25;
 
-const STATUS_META: Record<WizardStatus, { label: string; className: string }> = {
-  completed: { label: "Completed", className: "bg-green-50 text-green-700 ring-green-600/20" },
-  in_progress: { label: "In progress", className: "bg-fp-cobalt/10 text-fp-cobalt ring-fp-cobalt/20" },
-  expired: { label: "Expired", className: "bg-amber-50 text-amber-700 ring-amber-600/20" },
-  submission_failed: { label: "Failed", className: "bg-destructive/10 text-destructive ring-destructive/20" },
-};
+// The name shown in the Company column: the Salesforce account name when present,
+// otherwise the raw company id.
+function displayName(row: AccountRow): string {
+  return row.companyName ?? row.companyId;
+}
 
 // Provisional test-account heuristic. The onboarding data has no explicit test
 // flag yet, so we match common test/demo markers in the company id. This is a
@@ -45,21 +46,6 @@ const STATUS_FILTERS: { value: WizardStatus | "all"; label: string }[] = [
 
 type SortKey = "companyId" | "status" | "progress" | "createdAt";
 type SortDir = "asc" | "desc";
-
-function StatusPill({ status }: { status: WizardStatus }) {
-  const meta = STATUS_META[status];
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset",
-        meta.className,
-      )}
-    >
-      <span className="size-1.5 rounded-full bg-current" aria-hidden />
-      {meta.label}
-    </span>
-  );
-}
 
 function formatDate(date: Date): string {
   return new Date(date).toLocaleDateString("en-US", { dateStyle: "medium" });
@@ -109,7 +95,7 @@ export function AccountsTable({ rows }: { rows: AccountRow[] }) {
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [page, setPage] = useState(0);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<AccountRow | null>(null);
 
   const testCount = useMemo(() => rows.filter((r) => isTestAccount(r.companyId)).length, [rows]);
 
@@ -118,7 +104,9 @@ export function AccountsTable({ rows }: { rows: AccountRow[] }) {
     return rows.filter((r) => {
       if (hideTest && isTestAccount(r.companyId)) return false;
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
-      if (q && !r.companyId.toLowerCase().includes(q)) return false;
+      if (q && !r.companyId.toLowerCase().includes(q) && !(r.companyName ?? "").toLowerCase().includes(q)) {
+        return false;
+      }
       return true;
     });
   }, [rows, query, statusFilter, hideTest]);
@@ -128,7 +116,7 @@ export function AccountsTable({ rows }: { rows: AccountRow[] }) {
     return [...filtered].sort((a, b) => {
       switch (sortKey) {
         case "companyId":
-          return a.companyId.localeCompare(b.companyId) * dir;
+          return displayName(a).localeCompare(displayName(b)) * dir;
         case "status":
           return a.status.localeCompare(b.status) * dir;
         case "progress":
@@ -228,18 +216,23 @@ export function AccountsTable({ rows }: { rows: AccountRow[] }) {
                     <TableRow
                       key={row.id}
                       tabIndex={0}
-                      onClick={() => setSelectedId(row.id)}
+                      onClick={() => setSelected(row)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          setSelectedId(row.id);
+                          setSelected(row);
                         }
                       }}
                       className="cursor-pointer outline-none focus-visible:bg-muted/50"
                     >
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-foreground">{row.companyId}</span>
+                          <div className="flex flex-col">
+                            <span className="font-medium text-foreground">{displayName(row)}</span>
+                            {row.companyName ? (
+                              <span className="text-xs text-muted-foreground tabular-nums">{row.companyId}</span>
+                            ) : null}
+                          </div>
                           {isTest ? (
                             <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                               Test
@@ -297,7 +290,14 @@ export function AccountsTable({ rows }: { rows: AccountRow[] }) {
         ) : null}
       </CardContent>
 
-      <AccountDrawer accountId={selectedId} onClose={() => setSelectedId(null)} />
+      <AccountDrawer
+        selected={
+          selected
+            ? { id: selected.id, companyId: selected.companyId, companyName: selected.companyName }
+            : null
+        }
+        onClose={() => setSelected(null)}
+      />
     </Card>
   );
 }

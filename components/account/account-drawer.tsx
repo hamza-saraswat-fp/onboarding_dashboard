@@ -4,7 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { AccountDetail } from "./account-detail";
 import { SalesforceProfile } from "./sf-profile";
+import { StatusPill } from "./status-pill";
 import type { AccountDetail as AccountDetailData } from "@/lib/queries/account";
+
+export interface DrawerAccount {
+  id: string;
+  companyId: string;
+  companyName: string | null;
+}
 
 // Revives the ISO-string dates in the JSON payload back into Date objects so the
 // presentational components (which type these as Date) receive what they expect.
@@ -46,8 +53,9 @@ function reviveAccount(raw: unknown): AccountDetailData {
 // account visible while closing (so the exit animation is clean), and closes on
 // scrim click or Escape. The standalone /accounts/[id] page is still available
 // via "Open full page" for deep links.
-export function AccountDrawer({ accountId, onClose }: { accountId: string | null; onClose: () => void }) {
-  const open = accountId !== null;
+export function AccountDrawer({ selected, onClose }: { selected: DrawerAccount | null; onClose: () => void }) {
+  const open = selected !== null;
+  const accountId = selected?.id ?? null;
   const [account, setAccount] = useState<AccountDetailData | null>(null);
   const [state, setState] = useState<"idle" | "loading" | "error">("idle");
 
@@ -90,6 +98,9 @@ export function AccountDrawer({ accountId, onClose }: { accountId: string | null
     };
   }, [open, handleClose]);
 
+  const displayName = selected?.companyName ?? selected?.companyId ?? account?.companyId ?? "";
+  const displayId = selected?.companyId ?? account?.companyId ?? "";
+
   return (
     <div
       className={`fixed inset-0 z-50 transition-opacity duration-200 ${
@@ -106,19 +117,20 @@ export function AccountDrawer({ accountId, onClose }: { accountId: string | null
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        <header className="flex items-center justify-between gap-4 border-b px-6 py-4">
+        <header className="flex items-start justify-between gap-4 border-b px-6 py-4">
           <div className="min-w-0">
             <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Account</div>
-            <div className="truncate text-lg font-semibold text-foreground">
-              {account ? account.companyId : accountId}
+            <div className="truncate text-lg font-semibold text-foreground">{displayName}</div>
+            <div className="mt-1 flex items-center gap-2">
+              {account ? <StatusPill status={account.status} /> : null}
+              {displayId && displayId !== displayName ? (
+                <span className="truncate text-xs text-muted-foreground">ID {displayId}</span>
+              ) : null}
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3">
             {accountId ? (
-              <Link
-                href={`/accounts/${accountId}`}
-                className="text-sm font-medium text-primary hover:underline"
-              >
+              <Link href={`/accounts/${accountId}`} className="text-sm font-medium text-primary hover:underline">
                 Open full page
               </Link>
             ) : null}
@@ -142,7 +154,7 @@ export function AccountDrawer({ accountId, onClose }: { accountId: string | null
             <p className="text-sm text-destructive">Could not load this account. Close and try again.</p>
           ) : account ? (
             <div className="space-y-6">
-              <AccountDetail account={account} />
+              <AccountDetail account={account} showHeader={false} />
               <SalesforceProfile salesforceData={account.salesforceData} />
             </div>
           ) : null}

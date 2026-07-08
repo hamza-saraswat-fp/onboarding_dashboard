@@ -149,9 +149,11 @@ export default async function SummaryPage({
   }
   const accountRows: AccountRow[] = sessions.map((s) => {
     const agg = moduleAgg.get(s.id);
+    const name = s.salesforceData?.companyName;
     return {
       id: s.id,
       companyId: s.companyId,
+      companyName: typeof name === "string" && name.trim() !== "" ? name : null,
       status: s.status,
       progress: agg && agg.total > 0 ? agg.complete / agg.total : 0,
       modulesComplete: agg?.complete ?? 0,
