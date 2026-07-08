@@ -18,14 +18,6 @@ function displayName(row: AccountRow): string {
   return row.companyName ?? row.companyId;
 }
 
-// Provisional test-account heuristic. The onboarding data has no explicit test
-// flag yet, so we match common test/demo markers in the company id. This is a
-// stopgap to be refined later (e.g. an explicit column or an allowlist).
-const TEST_RE = /test|e2e|demo|sample|dummy|staging|\bqa\b/i;
-function isTestAccount(companyId: string): boolean {
-  return TEST_RE.test(companyId);
-}
-
 const STATUS_FILTERS: { value: WizardStatus | "all"; label: string }[] = [
   { value: "all", label: "All" },
   { value: "in_progress", label: "In progress" },
@@ -76,30 +68,38 @@ function SortHeader({
 }
 
 // The accounts list: one row per onboarding link. Client-side search, status
-// filtering, sorting, and pagination keep the whole set readable without an
-// endless scroll. Clicking a row opens the detail drawer in place.
-export function AccountsTable({ rows }: { rows: AccountRow[] }) {
+// filtering, sorting, and pagination keep the whole set readable. Clicking a row
+// opens the detail drawer in place. Used for both the main list and, collapsed,
+// the test-accounts table at the bottom of the page.
+export function AccountsTable({
+  rows,
+  title = "Accounts",
+  collapsible = false,
+  defaultCollapsed = false,
+}: {
+  rows: AccountRow[];
+  title?: string;
+  collapsible?: boolean;
+  defaultCollapsed?: boolean;
+}) {
+  const [collapsed, setCollapsed] = useState(collapsible ? defaultCollapsed : false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<WizardStatus | "all">("all");
-  const [hideTest, setHideTest] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<AccountRow | null>(null);
 
-  const testCount = useMemo(() => rows.filter((r) => isTestAccount(r.companyId)).length, [rows]);
-
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return rows.filter((r) => {
-      if (hideTest && isTestAccount(r.companyId)) return false;
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
       if (q && !r.companyId.toLowerCase().includes(q) && !(r.companyName ?? "").toLowerCase().includes(q)) {
         return false;
       }
       return true;
     });
-  }, [rows, query, statusFilter, hideTest]);
+  }, [rows, query, statusFilter]);
 
   const sorted = useMemo(() => {
     const dir = sortDir === "asc" ? 1 : -1;
@@ -133,76 +133,91 @@ export function AccountsTable({ rows }: { rows: AccountRow[] }) {
     setPage(0);
   }
 
+  const countLabel = collapsed
+    ? `${rows.length} ${rows.length === 1 ? "account" : "accounts"}`
+    : sorted.length === 0
+      ? "No accounts"
+      : `Showing ${rangeStart}-${rangeEnd} of ${sorted.length}`;
+
   return (
     <Card>
       <CardHeader className="gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <CardTitle>Accounts</CardTitle>
-          <span className="text-sm text-muted-foreground tabular-nums">
-            {sorted.length === 0 ? "No accounts" : `Showing ${rangeStart}-${rangeEnd} of ${sorted.length}`}
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setPage(0);
-            }}
-            placeholder="Search company ID"
-            className="h-8 w-52 rounded-lg border border-border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-          />
-          <div className="flex flex-wrap items-center gap-1">
-            {STATUS_FILTERS.map((f) => (
-              <Button
-                key={f.value}
-                size="sm"
-                variant={statusFilter === f.value ? "default" : "outline"}
-                onClick={() => {
-                  setStatusFilter(f.value);
-                  setPage(0);
-                }}
+          {collapsible ? (
+            <button
+              type="button"
+              onClick={() => setCollapsed((c) => !c)}
+              aria-expanded={!collapsed}
+              className="flex items-center gap-2 text-left"
+            >
+              <CardTitle>{title}</CardTitle>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className={`text-muted-foreground transition-transform duration-200 ${collapsed ? "" : "rotate-180"}`}
+                aria-hidden
               >
-                {f.label}
-              </Button>
-            ))}
-          </div>
-          {testCount > 0 ? (
-            <label className="ml-auto flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={hideTest}
-                onChange={(e) => {
-                  setHideTest(e.target.checked);
-                  setPage(0);
-                }}
-                className="size-3.5 accent-[var(--fp-navy)]"
-              />
-              Hide test accounts ({testCount})
-            </label>
-          ) : null}
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+          ) : (
+            <CardTitle>{title}</CardTitle>
+          )}
+          <span className="text-sm text-muted-foreground tabular-nums">{countLabel}</span>
         </div>
+        {!collapsed ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setPage(0);
+              }}
+              placeholder="Search company"
+              className="h-8 w-52 rounded-lg border border-border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            />
+            <div className="flex flex-wrap items-center gap-1">
+              {STATUS_FILTERS.map((f) => (
+                <Button
+                  key={f.value}
+                  size="sm"
+                  variant={statusFilter === f.value ? "default" : "outline"}
+                  onClick={() => {
+                    setStatusFilter(f.value);
+                    setPage(0);
+                  }}
+                >
+                  {f.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </CardHeader>
-      <CardContent>
-        {sorted.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">No accounts match these filters.</p>
-        ) : (
-          <div className="max-h-[70vh] overflow-y-auto rounded-lg border">
-            <Table>
-              <TableHeader className="sticky top-0 z-10 bg-card">
-                <TableRow className="hover:bg-transparent">
-                  <SortHeader label="Company" columnKey="companyId" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
-                  <SortHeader label="Status" columnKey="status" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
-                  <SortHeader label="Progress" columnKey="progress" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="right" />
-                  <TableHead className="text-right text-muted-foreground">Modules</TableHead>
-                  <SortHeader label="Created" columnKey="createdAt" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="right" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pageRows.map((row) => {
-                  const isTest = isTestAccount(row.companyId);
-                  return (
+
+      {!collapsed ? (
+        <CardContent>
+          {sorted.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">No accounts match these filters.</p>
+          ) : (
+            <div className="max-h-[70vh] overflow-y-auto rounded-lg border">
+              <Table>
+                <TableHeader className="sticky top-0 z-10 bg-card">
+                  <TableRow className="hover:bg-transparent">
+                    <SortHeader label="Company" columnKey="companyId" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
+                    <SortHeader label="Status" columnKey="status" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
+                    <SortHeader label="Progress" columnKey="progress" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="right" />
+                    <TableHead className="text-right text-muted-foreground">Modules</TableHead>
+                    <SortHeader label="Created" columnKey="createdAt" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="right" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pageRows.map((row) => (
                     <TableRow
                       key={row.id}
                       tabIndex={0}
@@ -216,17 +231,10 @@ export function AccountsTable({ rows }: { rows: AccountRow[] }) {
                       className="cursor-pointer outline-none focus-visible:bg-muted/50"
                     >
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="flex flex-col">
-                            <span className="font-medium text-foreground">{displayName(row)}</span>
-                            {row.companyName ? (
-                              <span className="text-xs text-muted-foreground tabular-nums">{row.companyId}</span>
-                            ) : null}
-                          </div>
-                          {isTest ? (
-                            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                              Test
-                            </span>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-foreground">{displayName(row)}</span>
+                          {row.companyName ? (
+                            <span className="text-xs text-muted-foreground tabular-nums">{row.companyId}</span>
                           ) : null}
                         </div>
                       </TableCell>
@@ -253,32 +261,32 @@ export function AccountsTable({ rows }: { rows: AccountRow[] }) {
                         {formatDate(row.createdAt)}
                       </TableCell>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        )}
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
 
-        {pageCount > 1 ? (
-          <div className="mt-4 flex items-center justify-end gap-3">
-            <span className="text-sm text-muted-foreground tabular-nums">
-              Page {currentPage + 1} of {pageCount}
-            </span>
-            <Button size="sm" variant="outline" disabled={currentPage === 0} onClick={() => setPage((p) => p - 1)}>
-              Previous
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={currentPage >= pageCount - 1}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next
-            </Button>
-          </div>
-        ) : null}
-      </CardContent>
+          {pageCount > 1 ? (
+            <div className="mt-4 flex items-center justify-end gap-3">
+              <span className="text-sm text-muted-foreground tabular-nums">
+                Page {currentPage + 1} of {pageCount}
+              </span>
+              <Button size="sm" variant="outline" disabled={currentPage === 0} onClick={() => setPage((p) => p - 1)}>
+                Previous
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={currentPage >= pageCount - 1}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          ) : null}
+        </CardContent>
+      ) : null}
 
       <AccountDrawer
         selected={

@@ -17,10 +17,12 @@ import {
 } from "@/lib/metrics/summary";
 import { moduleDropOff } from "@/lib/metrics/modules";
 import { topSelectionsBySection } from "@/lib/metrics/selections";
+import { isAutoTestAccount } from "@/lib/test-accounts";
 import { SummaryView, type SummaryMetrics } from "@/components/summary/summary-view";
 import type { TrendPoint } from "@/components/summary/trends";
 import type { BreakdownRow } from "@/components/summary/breakdown-table";
 import type { AccountRow } from "@/lib/queries/account";
+import type { WizardSession } from "@/lib/types";
 
 // The summary reads live data per request; never statically prerender it.
 export const dynamic = "force-dynamic";
@@ -80,13 +82,20 @@ export default async function SummaryPage({
     listImportJobs(),
   ]);
 
+  // Auto-detected test accounts ("test" + a number) are excluded from every
+  // statistic and shown only in the collapsed table at the bottom.
+  const nameOf = (s: WizardSession): string | null =>
+    typeof s.salesforceData?.companyName === "string" ? s.salesforceData.companyName : null;
+  const realSessions = allSessions.filter((s) => !isAutoTestAccount(s.companyId, nameOf(s)));
+  const testSessions = allSessions.filter((s) => isAutoTestAccount(s.companyId, nameOf(s)));
+
   // Scope by the selected date range (on createdAt), then narrow the module and
   // import rows to the surviving sessions so every metric agrees on the window.
-  let sessions = allSessions;
+  let sessions = realSessions;
   if (days !== null) {
     const to = new Date();
     const from = new Date(to.getTime() - days * DAY_MS);
-    sessions = filterByDateRange(allSessions, from, to);
+    sessions = filterByDateRange(realSessions, from, to);
   }
   const sessionIds = new Set(sessions.map((s) => s.id));
   const moduleData = allModuleData.filter((m) => sessionIds.has(m.sessionId));
@@ -116,9 +125,10 @@ export default async function SummaryPage({
   // Links created per week within the selected range, for the overview strip.
   const volume = bucketByWeek(sessions).map((b) => ({ key: b.key, count: b.sessions.length }));
 
-  // The accounts list is every account, not date-scoped: the table has its own
-  // search / status filter / pagination, and scoping the finder to the KPI range
-  // would hide most accounts by default.
+  // The accounts list is every real account, not date-scoped: the table has its
+  // own search / status filter / pagination, and scoping the finder to the KPI
+  // range would hide most accounts by default. Test accounts get their own rows
+  // for the collapsed bottom table.
   const allAgg = new Map<string, { total: number; complete: number }>();
   for (const m of allModuleData) {
     const a = allAgg.get(m.sessionId) ?? { total: 0, complete: 0 };
@@ -126,26 +136,28 @@ export default async function SummaryPage({
     if (m.isComplete) a.complete += 1;
     allAgg.set(m.sessionId, a);
   }
-  const accountRows: AccountRow[] = allSessions.map((s) => {
+  const toRow = (s: WizardSession): AccountRow => {
     const a = allAgg.get(s.id);
-    const name = s.salesforceData?.companyName;
+    const name = nameOf(s);
     return {
       id: s.id,
       companyId: s.companyId,
-      companyName: typeof name === "string" && name.trim() !== "" ? name : null,
+      companyName: name && name.trim() !== "" ? name : null,
       status: s.status,
       progress: a && a.total > 0 ? a.complete / a.total : 0,
       modulesComplete: a?.complete ?? 0,
       modulesTotal: a?.total ?? 0,
       createdAt: s.createdAt,
     };
-  });
+  };
+  const accountRows: AccountRow[] = realSessions.map(toRow);
+  const testAccountRows: AccountRow[] = testSessions.map(toRow);
 
   // Trends span the full history (independent of the KPI date range) so the
-  // timeline has enough buckets to be meaningful.
+  // timeline has enough buckets to be meaningful. Test accounts are excluded.
   const trends = {
-    weekly: bucketByWeek(allSessions).map(toTrendPoint),
-    monthly: bucketByMonth(allSessions).map(toTrendPoint),
+    weekly: bucketByWeek(realSessions).map(toTrendPoint),
+    monthly: bucketByMonth(realSessions).map(toTrendPoint),
   };
 
   // When a breakdown dimension is active, group the (date-scoped) sessions and
@@ -180,6 +192,7 @@ export default async function SummaryPage({
       trends={trends}
       breakdownData={breakdownData}
       accountRows={accountRows}
+      testAccountRows={testAccountRows}
     />
   );
 }

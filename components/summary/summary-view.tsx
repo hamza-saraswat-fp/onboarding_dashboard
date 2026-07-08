@@ -38,6 +38,7 @@ export function SummaryView({
   trends,
   breakdownData,
   accountRows,
+  testAccountRows,
 }: {
   range: string;
   breakdown: string;
@@ -48,6 +49,7 @@ export function SummaryView({
   trends: { weekly: TrendPoint[]; monthly: TrendPoint[] };
   breakdownData: { dimension: string; rows: BreakdownRow[] } | null;
   accountRows: AccountRow[];
+  testAccountRows: AccountRow[];
 }) {
   // Open insights automatically when a breakdown is active (the user asked for it).
   const [showInsights, setShowInsights] = useState(breakdownData !== null);
@@ -116,6 +118,10 @@ export function SummaryView({
       </div>
 
       <AccountsTable rows={accountRows} />
+
+      {testAccountRows.length > 0 ? (
+        <AccountsTable rows={testAccountRows} title="Test accounts" collapsible defaultCollapsed />
+      ) : null}
     </div>
   );
 }
