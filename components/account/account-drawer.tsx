@@ -29,6 +29,7 @@ function reviveAccount(raw: unknown): AccountDetailData {
     createdAt: toDate(data.createdAt),
     submittedAt: toDateOrNull(data.submittedAt),
     expiresAt: toDate(data.expiresAt),
+    onboardingUrl: (data.onboardingUrl ?? null) as string | null,
     salesforceData: (data.salesforceData ?? {}) as Record<string, unknown>,
     moduleSelections: ((data.moduleSelections as Record<string, unknown>[]) ?? []).map((m) => ({
       sessionId: m.sessionId as string,
@@ -113,7 +114,7 @@ export function AccountDrawer({ selected, onClose }: { selected: DrawerAccount |
         role="dialog"
         aria-modal="true"
         aria-label="Account detail"
-        className={`absolute inset-y-0 right-0 flex w-full max-w-xl flex-col bg-background shadow-2xl transition-transform duration-200 ease-out ${
+        className={`absolute inset-y-0 right-0 flex w-full max-w-2xl flex-col bg-background shadow-2xl transition-transform duration-200 ease-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >

@@ -9,6 +9,7 @@ export type ImportJobStatus = "queued" | "in_progress" | "success" | "failed" | 
 export interface WizardSession {
   id: string;
   companyId: string;
+  accessToken: string | null;
   salesforceData: Record<string, unknown>;
   currentModule: number;
   status: WizardStatus;

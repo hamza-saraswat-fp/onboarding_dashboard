@@ -14,6 +14,7 @@ export async function listSessions(): Promise<WizardSession[]> {
     select
       id,
       company_id as "companyId",
+      access_token as "accessToken",
       salesforce_data as "salesforceData",
       current_module as "currentModule",
       status,
@@ -30,6 +31,7 @@ export async function getSession(id: string): Promise<WizardSession | null> {
     select
       id,
       company_id as "companyId",
+      access_token as "accessToken",
       salesforce_data as "salesforceData",
       current_module as "currentModule",
       status,

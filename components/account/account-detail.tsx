@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { OnboardingLink } from "./onboarding-link";
 import type { AccountDetail as AccountDetailData } from "@/lib/queries/account";
 import type { ImportJobStatus, WizardStatus } from "@/lib/types";
 
@@ -42,9 +43,15 @@ function formatKey(key: string): string {
 
 function renderValue(value: unknown): string {
   if (value === null || value === undefined || value === "") return "-";
-  if (Array.isArray(value)) return value.length ? value.map((v) => String(v)).join(", ") : "-";
+  if (Array.isArray(value)) return value.length ? value.map((v) => renderValue(v)).join(", ") : "-";
   if (typeof value === "boolean") return value ? "Yes" : "No";
-  if (typeof value === "object") return JSON.stringify(value);
+  // Render nested objects as readable "Label: value" pairs instead of raw JSON.
+  if (typeof value === "object") {
+    const parts = Object.entries(value as Record<string, unknown>).map(
+      ([k, v]) => `${formatKey(k)}: ${renderValue(v)}`,
+    );
+    return parts.length ? parts.join(" · ") : "-";
+  }
   return String(value);
 }
 
@@ -90,6 +97,8 @@ export function AccountDetail({
           <StatusBadge status={account.status} />
         </div>
       ) : null}
+
+      {account.onboardingUrl ? <OnboardingLink url={account.onboardingUrl} /> : null}
 
       <div className="grid gap-4 @xl:grid-cols-2">
         <Card>
@@ -157,14 +166,14 @@ export function AccountDetail({
         <CardHeader>
           <CardTitle>Selections by module</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-5">
+        <CardContent className="divide-y divide-border">
           {account.moduleSelections.length === 0 ? (
             <p className="text-sm text-muted-foreground">No modules started.</p>
           ) : (
             account.moduleSelections.map((module) => {
               const entries = Object.entries(module.formData ?? {});
               return (
-                <div key={module.moduleKey} className="space-y-2">
+                <div key={module.moduleKey} className="space-y-2.5 py-5 first:pt-0 last:pb-0">
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-semibold text-foreground">
                       {MODULE_LABELS[module.moduleKey] ?? module.moduleKey}
@@ -176,7 +185,7 @@ export function AccountDetail({
                   {entries.length === 0 ? (
                     <p className="text-xs text-muted-foreground">No data.</p>
                   ) : (
-                    <dl className="grid grid-cols-1 gap-x-6 gap-y-1 @xl:grid-cols-2">
+                    <dl className="grid grid-cols-1 gap-x-6 gap-y-2 @2xl:grid-cols-2">
                       {entries.map(([key, value]) => (
                         <div key={key} className="flex justify-between gap-4 text-sm">
                           <dt className="shrink-0 text-muted-foreground">{formatKey(key)}</dt>

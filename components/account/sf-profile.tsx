@@ -13,7 +13,7 @@ export function SalesforceProfile({ salesforceData }: { salesforceData: Record<s
         {SALESFORCE_GROUPS.map((group) => (
           <div key={group.title} className="space-y-2">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.title}</h3>
-            <dl className="grid grid-cols-1 gap-x-6 gap-y-1 @xl:grid-cols-2">
+            <dl className="grid grid-cols-1 gap-x-6 gap-y-2 @2xl:grid-cols-2">
               {group.fields.map((field) => {
                 const value = fieldValue(salesforceData, field);
                 return (
