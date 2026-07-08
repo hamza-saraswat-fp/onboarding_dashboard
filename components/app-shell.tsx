@@ -22,7 +22,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <header className="border-b bg-background">
         <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-8 px-6">
           <Link href="/" className="flex items-center" aria-label="FieldPulse onboarding dashboard home">
-            <Image src="/fieldpulse-logo.svg" alt="FieldPulse" width={150} height={28} priority />
+            <Image src="/fieldpulse-logo.png" alt="FieldPulse" width={130} height={28} priority />
           </Link>
           <nav className="flex items-center gap-1">
             {NAV_ITEMS.map((item) => {

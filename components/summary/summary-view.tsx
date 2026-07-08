@@ -9,7 +9,6 @@ import { LifecycleCard, VolumeCard, type VolumePoint } from "./overview-cards";
 import { Trends, type TrendPoint } from "./trends";
 import { Filters } from "./filters";
 import { BreakdownTable, type BreakdownRow } from "./breakdown-table";
-import { AccountsTable, type AccountRow } from "./accounts-table";
 
 export interface SummaryMetrics {
   totalLinks: number;
@@ -33,7 +32,6 @@ export function SummaryView({
   volume,
   trends,
   breakdownData,
-  accountRows,
 }: {
   range: string;
   breakdown: string;
@@ -42,7 +40,6 @@ export function SummaryView({
   volume: VolumePoint[];
   trends: { weekly: TrendPoint[]; monthly: TrendPoint[] };
   breakdownData: { dimension: string; rows: BreakdownRow[] } | null;
-  accountRows: AccountRow[];
 }) {
   // Open insights automatically when a breakdown is active (the user asked for it).
   const [showInsights, setShowInsights] = useState(breakdownData !== null);
@@ -110,8 +107,6 @@ export function SummaryView({
               </div>
             ) : null}
           </div>
-
-          <AccountsTable rows={accountRows} />
         </>
       )}
     </div>

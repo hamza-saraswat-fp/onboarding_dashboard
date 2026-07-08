@@ -7,18 +7,8 @@ import { Button } from "@/components/ui/button";
 import { AccountDrawer } from "@/components/account/account-drawer";
 import { StatusPill } from "@/components/account/status-pill";
 import type { WizardStatus } from "@/lib/types";
+import type { AccountRow } from "@/lib/queries/account";
 import { cn } from "@/lib/utils";
-
-export interface AccountRow {
-  id: string;
-  companyId: string;
-  companyName: string | null;
-  status: WizardStatus;
-  progress: number; // 0..1
-  modulesComplete: number;
-  modulesTotal: number;
-  createdAt: Date;
-}
 
 const PAGE_SIZE = 25;
 
