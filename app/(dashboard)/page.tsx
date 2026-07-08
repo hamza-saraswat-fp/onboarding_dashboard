@@ -16,9 +16,11 @@ import {
   lifecycleBreakdown,
 } from "@/lib/metrics/summary";
 import { moduleDropOff } from "@/lib/metrics/modules";
+import { topSelections } from "@/lib/metrics/selections";
 import { SummaryView, type SummaryMetrics } from "@/components/summary/summary-view";
 import type { TrendPoint } from "@/components/summary/trends";
 import type { BreakdownRow } from "@/components/summary/breakdown-table";
+import type { AccountRow } from "@/lib/queries/account";
 
 // The summary reads live data per request; never statically prerender it.
 export const dynamic = "force-dynamic";
@@ -107,8 +109,36 @@ export default async function SummaryPage({
 
   const dropOff = moduleDropOff(sessions, moduleData);
 
+  // Highest-volume selections within the selected range (company metric).
+  const topPicks = topSelections(moduleData);
+
   // Links created per week within the selected range, for the overview strip.
   const volume = bucketByWeek(sessions).map((b) => ({ key: b.key, count: b.sessions.length }));
+
+  // The accounts list is every account, not date-scoped: the table has its own
+  // search / status filter / pagination, and scoping the finder to the KPI range
+  // would hide most accounts by default.
+  const allAgg = new Map<string, { total: number; complete: number }>();
+  for (const m of allModuleData) {
+    const a = allAgg.get(m.sessionId) ?? { total: 0, complete: 0 };
+    a.total += 1;
+    if (m.isComplete) a.complete += 1;
+    allAgg.set(m.sessionId, a);
+  }
+  const accountRows: AccountRow[] = allSessions.map((s) => {
+    const a = allAgg.get(s.id);
+    const name = s.salesforceData?.companyName;
+    return {
+      id: s.id,
+      companyId: s.companyId,
+      companyName: typeof name === "string" && name.trim() !== "" ? name : null,
+      status: s.status,
+      progress: a && a.total > 0 ? a.complete / a.total : 0,
+      modulesComplete: a?.complete ?? 0,
+      modulesTotal: a?.total ?? 0,
+      createdAt: s.createdAt,
+    };
+  });
 
   // Trends span the full history (independent of the KPI date range) so the
   // timeline has enough buckets to be meaningful.
@@ -145,8 +175,10 @@ export default async function SummaryPage({
       summary={summary}
       moduleDropOff={dropOff}
       volume={volume}
+      topSelections={topPicks}
       trends={trends}
       breakdownData={breakdownData}
+      accountRows={accountRows}
     />
   );
 }

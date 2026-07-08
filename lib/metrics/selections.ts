@@ -133,6 +133,31 @@ export function selectionDistribution(moduleData: WizardModuleData[]): Selection
   return result;
 }
 
+export interface TopSelection {
+  moduleKey: string;
+  field: string;
+  value: string;
+  count: number;
+}
+
+// The most-chosen selection values across all modules, ranked by count. Boolean
+// toggles (Yes/No) are excluded so the list surfaces meaningful categorical
+// choices (company size, workflows, tag sets, service levels). This is the
+// readable form of "highest-volume selections" for the company summary.
+export function topSelections(moduleData: WizardModuleData[], limit = 10): TopSelection[] {
+  const distribution = selectionDistribution(moduleData);
+  const rows: TopSelection[] = [];
+  for (const f of distribution) {
+    for (const o of f.options) {
+      const v = o.value.toLowerCase();
+      if (o.count <= 0 || v === "true" || v === "false") continue;
+      rows.push({ moduleKey: f.moduleKey, field: f.field, value: o.value, count: o.count });
+    }
+  }
+  rows.sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
+  return rows.slice(0, limit);
+}
+
 // For each chosen selection value, the completion rate of the sessions that made
 // it (fraction whose status is 'completed'). Only observed selections appear.
 export function selectionCompletionCorrelation(

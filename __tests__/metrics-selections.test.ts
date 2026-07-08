@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { sql } from "../lib/db";
 import { listSessions, listModuleData } from "../lib/queries/sessions";
-import { selectionDistribution, selectionCompletionCorrelation } from "../lib/metrics/selections";
+import { selectionDistribution, selectionCompletionCorrelation, topSelections } from "../lib/metrics/selections";
 import type { SelectionField, SelectionCorrelation } from "../lib/metrics/selections";
 import type { WizardSession, WizardModuleData } from "../lib/types";
 
@@ -67,6 +67,21 @@ describe("selection metrics (against the seed)", () => {
     const residential = correlation(rows, "generalInfo", "customerTypes", "residential");
     expect(residential).toMatchObject({ sessions: 8, completions: 3 });
     expect(residential?.completionRate).toBe(0.375);
+  });
+
+  it("ranks the highest-volume selections, excluding booleans", () => {
+    const top = topSelections(moduleData, 10);
+
+    expect(top.length).toBeGreaterThan(0);
+    expect(top.length).toBeLessThanOrEqual(10);
+    // Ranked by count, descending. The most-chosen selection has 8 (e.g. company
+    // size 11-20 and customerTypes residential, both picked by all 8 sessions).
+    expect(top[0].count).toBe(8);
+    for (let i = 1; i < top.length; i++) {
+      expect(top[i - 1].count).toBeGreaterThanOrEqual(top[i].count);
+    }
+    // No boolean toggles in the list.
+    expect(top.every((r) => !["true", "false"].includes(r.value.toLowerCase()))).toBe(true);
   });
 });
 
