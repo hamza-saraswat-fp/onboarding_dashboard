@@ -3,10 +3,9 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ModuleDropOff } from "@/lib/metrics/modules";
-import type { SelectionCorrelation, SelectionField } from "@/lib/metrics/selections";
 import { KpiTiles } from "./kpi-tiles";
-import { FunnelCharts } from "./funnel-charts";
-import { SelectionInsights } from "./selection-insights";
+import { OnboardingFunnel } from "./onboarding-funnel";
+import { LifecycleCard, VolumeCard, type VolumePoint } from "./overview-cards";
 import { Trends, type TrendPoint } from "./trends";
 import { Filters } from "./filters";
 import { BreakdownTable, type BreakdownRow } from "./breakdown-table";
@@ -31,8 +30,7 @@ export function SummaryView({
   breakdown,
   summary,
   moduleDropOff,
-  selectionDistribution,
-  selectionCorrelation,
+  volume,
   trends,
   breakdownData,
   accountRows,
@@ -41,8 +39,7 @@ export function SummaryView({
   breakdown: string;
   summary: SummaryMetrics;
   moduleDropOff: ModuleDropOff[];
-  selectionDistribution: SelectionField[];
-  selectionCorrelation: SelectionCorrelation[];
+  volume: VolumePoint[];
   trends: { weekly: TrendPoint[]; monthly: TrendPoint[] };
   breakdownData: { dimension: string; rows: BreakdownRow[] } | null;
   accountRows: AccountRow[];
@@ -69,6 +66,16 @@ export function SummaryView({
         <>
           <KpiTiles summary={summary} />
 
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <OnboardingFunnel steps={moduleDropOff} totalLinks={summary.totalLinks} />
+            </div>
+            <div className="space-y-4">
+              <LifecycleCard lifecycle={summary.lifecycle} />
+              <VolumeCard volume={volume} />
+            </div>
+          </div>
+
           <div className="rounded-xl ring-1 ring-foreground/10">
             <button
               type="button"
@@ -76,7 +83,7 @@ export function SummaryView({
               aria-expanded={showInsights}
               className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left"
             >
-              <span className="text-base font-medium text-foreground">Funnel and insights</span>
+              <span className="text-base font-medium text-foreground">Trends and breakdowns</span>
               <span className="flex items-center gap-2 text-sm text-muted-foreground">
                 {showInsights ? "Hide" : "Show"}
                 <svg
@@ -99,8 +106,6 @@ export function SummaryView({
                 {breakdownData ? (
                   <BreakdownTable dimensionLabel={breakdownData.dimension} rows={breakdownData.rows} />
                 ) : null}
-                <FunnelCharts lifecycle={summary.lifecycle} moduleDropOff={moduleDropOff} />
-                <SelectionInsights distribution={selectionDistribution} correlation={selectionCorrelation} />
                 <Trends weekly={trends.weekly} monthly={trends.monthly} />
               </div>
             ) : null}

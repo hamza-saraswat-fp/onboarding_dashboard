@@ -16,7 +16,6 @@ import {
   lifecycleBreakdown,
 } from "@/lib/metrics/summary";
 import { moduleDropOff } from "@/lib/metrics/modules";
-import { selectionDistribution, selectionCompletionCorrelation } from "@/lib/metrics/selections";
 import { SummaryView, type SummaryMetrics } from "@/components/summary/summary-view";
 import type { TrendPoint } from "@/components/summary/trends";
 import type { BreakdownRow } from "@/components/summary/breakdown-table";
@@ -108,8 +107,9 @@ export default async function SummaryPage({
   };
 
   const dropOff = moduleDropOff(sessions, moduleData);
-  const distribution = selectionDistribution(moduleData);
-  const correlation = selectionCompletionCorrelation(sessions, moduleData);
+
+  // Links created per week within the selected range, for the overview strip.
+  const volume = bucketByWeek(sessions).map((b) => ({ key: b.key, count: b.sessions.length }));
 
   // Trends span the full history (independent of the KPI date range) so the
   // timeline has enough buckets to be meaningful.
@@ -168,8 +168,7 @@ export default async function SummaryPage({
       breakdown={dimension ?? "none"}
       summary={summary}
       moduleDropOff={dropOff}
-      selectionDistribution={distribution}
-      selectionCorrelation={correlation}
+      volume={volume}
       trends={trends}
       breakdownData={breakdownData}
       accountRows={accountRows}
