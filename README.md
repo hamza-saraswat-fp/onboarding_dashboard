@@ -5,7 +5,7 @@ Internal, read-only analytics dashboard over the FieldPulse onboarding app's Sup
 - **Company summary** (the landing view): links generated, completions, completion rate, average progress, average and median time-to-complete, module drop-off, selection distribution and selection-to-completion correlation, submissions, lifecycle breakdown, trends over time with before/after comparison, and breakdowns by Salesforce dimension (Sales Segment, Industry, Number of Employees).
 - **Account drill-down**: one customer's progress, final per-module selections, per-module submit results, key timestamps, and the full Salesforce profile captured at link creation (including fields never shown in the onboarding app).
 
-It is a standalone app deployed as its own Vercel project (`fp-onboarding-dashboard`), gated behind Google SSO restricted to an allowlist of FieldPulse emails. It only ever reads the onboarding database.
+It is a standalone app deployed as its own Vercel project (`fp-onboarding-dashboard`). For the initial launch it is gated behind a shared HTTP Basic Auth login; Google SSO with an email allowlist is fully implemented and can be turned on later (see [Access](#access)). It only ever reads the onboarding database.
 
 ## Links
 
@@ -42,12 +42,11 @@ Prerequisites: Node 20+ and a local Postgres.
    ```
    npm run test
    ```
-4. Copy `.env.example` to `.env.local` and fill it in. For local dev without real Google credentials, set `AUTH_DEV_BYPASS=true`, add the stub user to `ALLOWED_EMAILS`, and point `DATABASE_URL` at the seeded local database:
+4. Copy `.env.example` to `.env.local` and fill it in. The app is gated by HTTP Basic Auth, so set a username/password and point `DATABASE_URL` at the seeded local database:
    ```
    DATABASE_URL=postgres://localhost:5432/onboarding_dash_test
-   AUTH_DEV_BYPASS=true
-   ALLOWED_EMAILS=dev@fieldpulse.com
-   AUTH_SECRET=dev-secret-not-for-production
+   BASIC_AUTH_USER=dev
+   BASIC_AUTH_PASSWORD=dev
    ```
 5. Run the app:
    ```
@@ -67,6 +66,13 @@ npm run build
 
 `npm run test` runs against the local Postgres (never the real Supabase): the harness resolves `TEST_DATABASE_URL` (defaulting to `postgres://localhost:5432/onboarding_dash_test`), refuses any target that is not a local `*test*` database, and re-seeds it before the suite. Tests run in UTC for deterministic date bucketing.
 
+## Access
+
+Every route is gated by `middleware.ts`. There are two modes:
+
+- **HTTP Basic Auth (active).** A shared username / password (`BASIC_AUTH_USER` / `BASIC_AUTH_PASSWORD`). Deny-by-default: if either is unset, no one gets in. This is the quick-launch gate for gathering feedback. It is a stopgap - a shared credential over HTTPS.
+- **Google SSO + email allowlist (deferred, already implemented).** `lib/auth.ts`, the `app/api/auth/[...nextauth]` route, `lib/auth/allowlist.ts`, and the 403 page are in place but dormant. To switch, restore the Auth.js middleware in `middleware.ts` and set `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, and `ALLOWED_EMAILS` (see the `git log` for the prior middleware, or the deferred vars in `.env.example`).
+
 ## Environment variables
 
 `.env.example` holds placeholders. Real values live in `.env.local` (git-ignored) and in the Vercel dashboard per environment.
@@ -74,27 +80,27 @@ npm run build
 | Variable | Secret | Description |
 |---|---|---|
 | `DATABASE_URL` | Yes | Read-only Postgres connection to the onboarding Supabase. Use a read-only role (see Deploy). |
-| `AUTH_SECRET` | Yes | Auth.js session-encryption secret. Generate with `npx auth secret`. |
-| `AUTH_GOOGLE_ID` | Yes | Google OAuth client ID. |
-| `AUTH_GOOGLE_SECRET` | Yes | Google OAuth client secret. |
-| `AUTH_DEV_BYPASS` | No | Local dev only. `true` bypasses Google SSO with a stub user; **ignored when `NODE_ENV=production`**. Do not set it in production. |
-| `ALLOWED_EMAILS` | No (plain) | Comma-separated allowlist of FieldPulse emails permitted to use the dashboard. Case-insensitive. Intentionally **not** a secret so it can be edited quickly in the Vercel dashboard. An empty or missing list denies everyone. |
+| `BASIC_AUTH_USER` | Yes | Username for the active Basic Auth gate. Deny-by-default: if unset, no one gets in. |
+| `BASIC_AUTH_PASSWORD` | Yes | Password for the Basic Auth gate. |
 | `TEST_DATABASE_URL` | No | Optional. Local test database for the vitest harness. Defaults to `postgres://localhost:5432/onboarding_dash_test`. Never point this at a remote database. |
+| `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_DEV_BYPASS`, `ALLOWED_EMAILS` | Later | Only for the deferred Google SSO path; not needed in the Basic Auth launch. See Access. |
 
 ## Deploy
 
-Provisioning Vercel, Google OAuth, and the read-only DB role are human tasks (not performed by the build).
+The read-only DB role is a human task (not performed by the build). The Basic Auth launch needs only three env vars.
 
 1. **Vercel project.** Create a Vercel project named `fp-onboarding-dashboard`, connect this repository, and let it detect Next.js. Deploys track `main`.
-2. **Environment variables.** In the Vercel project settings, set `DATABASE_URL`, `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, and `ALLOWED_EMAILS`. Do **not** set `AUTH_DEV_BYPASS` in production. `ALLOWED_EMAILS` is a plain var you can edit any time to add or remove people.
-3. **Google OAuth.** In the Google Cloud console, create an OAuth 2.0 client (type: Web application). Add the authorized redirect URI `https://<your-vercel-domain>/api/auth/callback/google` (and the preview domains if used). Put the client id and secret in `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET`.
-4. **Read-only database role.** Provision a dedicated read-only Postgres role on the onboarding Supabase and use its connection string as `DATABASE_URL`. The dashboard only issues SELECTs; the role should have no write access. For example:
+2. **Read-only database role.** Provision a dedicated read-only Postgres role on the onboarding Supabase and use its connection string as `DATABASE_URL`. Use the Supabase **Session** pooler string (port 5432, `...pooler.supabase.com`) since the client uses prepared statements. The dashboard only issues SELECTs; the role should have no write access. For example:
    ```sql
    create role onboarding_dashboard_ro login password '<strong-password>';
    grant usage on schema public to onboarding_dashboard_ro;
    grant select on wizard_sessions, wizard_module_data, import_jobs to onboarding_dashboard_ro;
    ```
    Confirm the role cannot insert, update, or delete before wiring it up.
+3. **Environment variables.** In the Vercel project settings set `DATABASE_URL`, `BASIC_AUTH_USER`, and `BASIC_AUTH_PASSWORD` (Production, and Preview if you want preview deploys gated). `DATABASE_URL` must be set before the first deploy - the build reads it while collecting page data.
+4. **Deploy**, then open the site and sign in with the Basic Auth credentials.
+
+To move to Google SSO later, follow [Access](#access): restore the Auth.js middleware, create a Google OAuth client (redirect `https://<domain>/api/auth/callback/google`), and set the `AUTH_*` and `ALLOWED_EMAILS` vars.
 
 ## Scope (V1)
 
