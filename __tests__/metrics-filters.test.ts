@@ -50,6 +50,7 @@ describe("filter and segmentation helpers (against the seed)", () => {
 describe("segmentation helpers (defensive)", () => {
   it("puts sessions with a missing dimension under Unspecified", () => {
     const base = {
+      accessToken: null,
       currentModule: 0,
       status: "in_progress" as const,
       createdAt: new Date("2026-06-01T00:00:00Z"),

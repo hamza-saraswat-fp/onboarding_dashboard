@@ -133,6 +133,94 @@ export function selectionDistribution(moduleData: WizardModuleData[]): Selection
   return result;
 }
 
+export interface SelectionItem {
+  label: string;
+  count: number;
+}
+
+export interface SelectionSection {
+  key: string;
+  title: string;
+  items: SelectionItem[];
+}
+
+// The curated sections shown in "Most common selections". Only the areas the
+// team cares about (customer tags, job workflows, and the ClearPath, customer
+// communications, and custom forms modules); general info and estimates and
+// invoices are deliberately excluded.
+//   - value:       count each chosen value (arrays/enums), e.g. tag sets.
+//   - field-value: count each field's chosen value, e.g. ClearPath level per workflow.
+//   - enabled:     boolean toggles, count how many accounts turned each option on.
+const SELECTION_SECTIONS: {
+  key: string;
+  title: string;
+  fields: string[] | null; // restrict to these top-level fields; null = all
+  mode: "value" | "field-value" | "enabled";
+}[] = [
+  { key: "customers", title: "Customer tags", fields: ["selectedTagSets"], mode: "value" },
+  { key: "jobs", title: "Job workflows", fields: ["workflows"], mode: "value" },
+  { key: "clearpath", title: "ClearPath", fields: null, mode: "field-value" },
+  { key: "communications", title: "Customer communications", fields: null, mode: "enabled" },
+  { key: "customForms", title: "Custom forms", fields: null, mode: "enabled" },
+];
+
+const ACRONYMS: Record<string, string> = { sms: "SMS", fp: "FP", qbo: "QBO" };
+
+function humanizeSegment(seg: string): string {
+  const spaced = seg
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/_/g, " ")
+    .trim()
+    .toLowerCase();
+  if (ACRONYMS[spaced]) return ACRONYMS[spaced];
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+function labelizePath(field: string): string {
+  return field.split(".").map(humanizeSegment).join(" · ");
+}
+
+// The most common selections per curated section. Counts are the number of
+// accounts (module rows) that made each selection.
+export function topSelectionsBySection(moduleData: WizardModuleData[], perSection = 8): SelectionSection[] {
+  const byModule = new Map<string, WizardModuleData[]>();
+  for (const m of moduleData) {
+    const arr = byModule.get(m.moduleKey) ?? [];
+    arr.push(m);
+    byModule.set(m.moduleKey, arr);
+  }
+
+  return SELECTION_SECTIONS.map((cfg) => {
+    const rows = byModule.get(cfg.key) ?? [];
+    const counts = new Map<string, number>();
+
+    for (const row of rows) {
+      for (const { field, value } of selectionsOf(row.formData)) {
+        if (cfg.fields && !cfg.fields.includes(field.split(".")[0])) continue;
+        const isBool = value === "true" || value === "false";
+
+        let label: string | null = null;
+        if (cfg.mode === "enabled") {
+          if (value === "true") label = labelizePath(field);
+        } else if (cfg.mode === "field-value") {
+          if (!isBool) label = `${labelizePath(field)}: ${humanizeSegment(value)}`;
+        } else if (!isBool) {
+          label = humanizeSegment(value);
+        }
+
+        if (label) counts.set(label, (counts.get(label) ?? 0) + 1);
+      }
+    }
+
+    const items = [...counts.entries()]
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+      .slice(0, perSection);
+
+    return { key: cfg.key, title: cfg.title, items };
+  });
+}
+
 // For each chosen selection value, the completion rate of the sessions that made
 // it (fraction whose status is 'completed'). Only observed selections appear.
 export function selectionCompletionCorrelation(

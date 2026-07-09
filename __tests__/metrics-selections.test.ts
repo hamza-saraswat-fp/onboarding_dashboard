@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { sql } from "../lib/db";
 import { listSessions, listModuleData } from "../lib/queries/sessions";
-import { selectionDistribution, selectionCompletionCorrelation } from "../lib/metrics/selections";
+import {
+  selectionDistribution,
+  selectionCompletionCorrelation,
+  topSelectionsBySection,
+} from "../lib/metrics/selections";
 import type { SelectionField, SelectionCorrelation } from "../lib/metrics/selections";
 import type { WizardSession, WizardModuleData } from "../lib/types";
 
@@ -67,6 +71,37 @@ describe("selection metrics (against the seed)", () => {
     const residential = correlation(rows, "generalInfo", "customerTypes", "residential");
     expect(residential).toMatchObject({ sessions: 8, completions: 3 });
     expect(residential?.completionRate).toBe(0.375);
+  });
+
+  it("groups most-common selections into the curated sections", () => {
+    const sections = topSelectionsBySection(moduleData);
+
+    // The configured sections, in order (general info and estimates excluded).
+    expect(sections.map((s) => s.key)).toEqual([
+      "customers",
+      "jobs",
+      "clearpath",
+      "communications",
+      "customForms",
+    ]);
+
+    // Customer tags: humanized array values with per-account counts.
+    const tags = sections.find((s) => s.key === "customers")!;
+    expect(tags.items).toContainEqual({ label: "Default", count: 7 });
+    expect(tags.items).toContainEqual({ label: "Residential", count: 7 });
+
+    // Job workflows: service_call and installation both chosen by 5.
+    const jobs = sections.find((s) => s.key === "jobs")!;
+    expect(jobs.items).toContainEqual({ label: "Service call", count: 5 });
+
+    // Communications is boolean-toggle based: enabled options only, never a
+    // raw "true"/"false" label. Each section is ranked by count descending.
+    for (const section of sections) {
+      expect(section.items.every((i) => !["true", "false"].includes(i.label.toLowerCase()))).toBe(true);
+      for (let i = 1; i < section.items.length; i++) {
+        expect(section.items[i - 1].count).toBeGreaterThanOrEqual(section.items[i].count);
+      }
+    }
   });
 });
 
