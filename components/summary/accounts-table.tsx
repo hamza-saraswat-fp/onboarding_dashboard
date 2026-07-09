@@ -205,9 +205,9 @@ export function AccountsTable({
           {sorted.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">No accounts match these filters.</p>
           ) : (
-            <div className="max-h-[70vh] overflow-y-auto rounded-lg border">
+            <div className="rounded-lg border">
               <Table>
-                <TableHeader className="sticky top-0 z-10 bg-card">
+                <TableHeader className="bg-card">
                   <TableRow className="hover:bg-transparent">
                     <SortHeader label="Company" columnKey="companyId" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
                     <SortHeader label="Status" columnKey="status" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
@@ -232,7 +232,36 @@ export function AccountsTable({
                     >
                       <TableCell>
                         <div className="flex flex-col">
-                          <span className="font-medium text-foreground">{displayName(row)}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-medium text-foreground">{displayName(row)}</span>
+                            {row.salesforceUrl ? (
+                              <a
+                                href={row.salesforceUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                title="View in Salesforce"
+                                aria-label={`View ${displayName(row)} in Salesforce`}
+                                className="text-muted-foreground transition-colors hover:text-primary"
+                              >
+                                <svg
+                                  width="13"
+                                  height="13"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  aria-hidden
+                                >
+                                  <path d="M15 3h6v6" />
+                                  <path d="M10 14 21 3" />
+                                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                </svg>
+                              </a>
+                            ) : null}
+                          </div>
                           {row.companyName ? (
                             <span className="text-xs text-muted-foreground tabular-nums">{row.companyId}</span>
                           ) : null}
