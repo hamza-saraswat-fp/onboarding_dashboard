@@ -1,15 +1,31 @@
-// Auto-detects test onboarding accounts. The rule: the company name or id
-// contains "test" followed by a number (e.g. "Test 20", "test20", "test-42").
-// Test accounts are excluded from every statistic and are shown only in the
-// collapsed table at the bottom of the dashboard.
+// Detects test / demo onboarding accounts so they can be excluded from every
+// statistic and shown only in the collapsed table at the bottom.
 //
-// A word boundary is required before "test" so suffixes like "contest 9" or
-// "latest 5" are not caught, and letters between "test" and the number break the
-// match, so real names like "Testarossa 5" are not caught either.
+// Rule: the company name or id starts a word with "test" (test, test20, "Local
+// Test Co", "Test company name") or contains "e2e". A leading word boundary
+// keeps real names like "Latest 5" or "Contest 9" from matching.
+//
+// Some test accounts can't be caught by name (e.g. the typo "Teset 137"). Those
+// are listed by company id below, and more can be added without a code change
+// via the TEST_COMPANY_IDS env var (comma-separated company ids).
 
-const TEST_RE = /\btest[^a-z0-9]*\d+/i;
+const TEST_RE = /\btest|\be2e\b/i;
 
-export function isAutoTestAccount(companyId: string, companyName: string | null): boolean {
+// Known test accounts the name heuristic can't catch (typos, opaque ids).
+const TEST_ID_OVERRIDES = ["85273"]; // "Teset 137" (misspelled "Test")
+
+function overrideIds(): Set<string> {
+  const fromEnv = (process.env.TEST_COMPANY_IDS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return new Set([...TEST_ID_OVERRIDES, ...fromEnv]);
+}
+
+const OVERRIDES = overrideIds();
+
+export function isTestAccount(companyId: string, companyName: string | null): boolean {
+  if (OVERRIDES.has(companyId)) return true;
   if (TEST_RE.test(companyId)) return true;
   return companyName != null && TEST_RE.test(companyName);
 }

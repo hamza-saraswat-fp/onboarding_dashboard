@@ -17,7 +17,7 @@ import {
 } from "@/lib/metrics/summary";
 import { moduleDropOff } from "@/lib/metrics/modules";
 import { topSelectionsBySection } from "@/lib/metrics/selections";
-import { isAutoTestAccount } from "@/lib/test-accounts";
+import { isTestAccount } from "@/lib/test-accounts";
 import { SummaryView, type SummaryMetrics } from "@/components/summary/summary-view";
 import type { TrendPoint } from "@/components/summary/trends";
 import type { BreakdownRow } from "@/components/summary/breakdown-table";
@@ -86,8 +86,8 @@ export default async function SummaryPage({
   // statistic and shown only in the collapsed table at the bottom.
   const nameOf = (s: WizardSession): string | null =>
     typeof s.salesforceData?.companyName === "string" ? s.salesforceData.companyName : null;
-  const realSessions = allSessions.filter((s) => !isAutoTestAccount(s.companyId, nameOf(s)));
-  const testSessions = allSessions.filter((s) => isAutoTestAccount(s.companyId, nameOf(s)));
+  const realSessions = allSessions.filter((s) => !isTestAccount(s.companyId, nameOf(s)));
+  const testSessions = allSessions.filter((s) => isTestAccount(s.companyId, nameOf(s)));
 
   // Scope by the selected date range (on createdAt), then narrow the module and
   // import rows to the surviving sessions so every metric agrees on the window.
