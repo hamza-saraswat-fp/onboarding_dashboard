@@ -21,7 +21,11 @@ import { isTestAccount } from "@/lib/test-accounts";
 import { SummaryView, type SummaryMetrics } from "@/components/summary/summary-view";
 import type { TrendPoint } from "@/components/summary/trends";
 import type { BreakdownRow } from "@/components/summary/breakdown-table";
-import type { AccountRow } from "@/lib/queries/account";
+import {
+  salesforceAccountIdFrom,
+  salesforceAccountUrl,
+  type AccountRow,
+} from "@/lib/queries/account";
 import type { WizardSession } from "@/lib/types";
 
 // The summary reads live data per request; never statically prerender it.
@@ -148,6 +152,7 @@ export default async function SummaryPage({
       modulesComplete: a?.complete ?? 0,
       modulesTotal: a?.total ?? 0,
       createdAt: s.createdAt,
+      salesforceUrl: salesforceAccountUrl(salesforceAccountIdFrom(s.salesforceData)),
     };
   };
   const accountRows: AccountRow[] = realSessions.map(toRow);
