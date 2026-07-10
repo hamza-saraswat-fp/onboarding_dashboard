@@ -5,7 +5,7 @@ Internal, read-only analytics dashboard over the FieldPulse onboarding app's Sup
 - **Company summary** (the landing view): links generated, completions, completion rate, average progress, average and median time-to-complete, module drop-off, selection distribution and selection-to-completion correlation, submissions, lifecycle breakdown, trends over time with before/after comparison, and breakdowns by Salesforce dimension (Sales Segment, Industry, Number of Employees).
 - **Account drill-down**: one customer's progress, final per-module selections, per-module submit results, key timestamps, and the full Salesforce profile captured at link creation (including fields never shown in the onboarding app).
 
-It is a standalone app deployed as its own Vercel project (`fp-onboarding-dashboard`). For the initial launch it is gated behind a shared HTTP Basic Auth login; Google SSO with an email allowlist is fully implemented and can be turned on later (see [Access](#access)). It only ever reads the onboarding database.
+It is a standalone app deployed as its own Vercel project (`fp-onboarding-dashboard`). It is gated behind Google SSO with a FieldPulse email allowlist; a shared HTTP Basic Auth login remains implemented as a dormant fallback (see [Access](#access)). It only ever reads the onboarding database.
 
 ## Links
 
@@ -42,11 +42,11 @@ Prerequisites: Node 20+ and a local Postgres.
    ```
    npm run test
    ```
-4. Copy `.env.example` to `.env.local` and fill it in. The app is gated by HTTP Basic Auth, so set a username/password and point `DATABASE_URL` at the seeded local database:
+4. Copy `.env.example` to `.env.local` and fill it in. For local development, bypass Google SSO with the dev stub and point `DATABASE_URL` at the seeded local database:
    ```
    DATABASE_URL=postgres://localhost:5432/onboarding_dash_test
-   BASIC_AUTH_USER=dev
-   BASIC_AUTH_PASSWORD=dev
+   AUTH_SECRET=any-non-empty-value-for-local
+   AUTH_DEV_BYPASS=true
    ```
 5. Run the app:
    ```
@@ -70,8 +70,8 @@ npm run build
 
 Every route is gated by `middleware.ts`. There are two modes:
 
-- **HTTP Basic Auth (active).** A shared username / password (`BASIC_AUTH_USER` / `BASIC_AUTH_PASSWORD`). Deny-by-default: if either is unset, no one gets in. This is the quick-launch gate for gathering feedback. It is a stopgap - a shared credential over HTTPS.
-- **Google SSO + email allowlist (deferred, already implemented).** `lib/auth.ts`, the `app/api/auth/[...nextauth]` route, `lib/auth/allowlist.ts`, and the 403 page are in place but dormant. To switch, restore the Auth.js middleware in `middleware.ts` and set `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, and `ALLOWED_EMAILS` (see the `git log` for the prior middleware, or the deferred vars in `.env.example`).
+- **Google SSO + email allowlist (active).** Sign in with Google; only addresses matching `ALLOWED_EMAILS` may enter. An entry starting with `@` (for example `@fieldpulse.com`) matches a whole domain; any other entry must match the full email. A signed-in user who is not allowlisted gets the `/403` page. Deny-by-default: an empty allowlist admits no one. The config lives in `lib/auth.ts`, the `app/api/auth/[...nextauth]` route, `lib/auth/allowlist.ts`, and the 403 page. For local development, set `AUTH_DEV_BYPASS=true` (non-production only) to sign in as a stub user without Google.
+- **Shared HTTP Basic Auth (dormant fallback).** `lib/auth/basic-auth.ts` and the Basic Auth middleware remain in place but unused. To fall back to a shared username / password, restore the Basic Auth middleware in `middleware.ts` (see the `git log`) and set `BASIC_AUTH_USER` / `BASIC_AUTH_PASSWORD`.
 
 ## Environment variables
 
@@ -80,27 +80,31 @@ Every route is gated by `middleware.ts`. There are two modes:
 | Variable | Secret | Description |
 |---|---|---|
 | `DATABASE_URL` | Yes | Read-only Postgres connection to the onboarding Supabase. Use a read-only role (see Deploy). |
-| `BASIC_AUTH_USER` | Yes | Username for the active Basic Auth gate. Deny-by-default: if unset, no one gets in. |
-| `BASIC_AUTH_PASSWORD` | Yes | Password for the Basic Auth gate. |
+| `AUTH_SECRET` | Yes | Auth.js session-encryption secret. Generate with `npx auth secret`. |
+| `AUTH_GOOGLE_ID` | Yes | Google OAuth client ID (Google Cloud console). |
+| `AUTH_GOOGLE_SECRET` | Yes | Google OAuth client secret. |
+| `ALLOWED_EMAILS` | No | Comma-separated allowlist. An entry starting with `@` matches a whole domain; any other entry must match the full email. Case-insensitive. Empty denies everyone. |
+| `AUTH_DEV_BYPASS` | No | Local dev only. `true` signs in as a stub user without Google. Ignored when `NODE_ENV=production`; never set in Vercel. |
 | `TEST_DATABASE_URL` | No | Optional. Local test database for the vitest harness. Defaults to `postgres://localhost:5432/onboarding_dash_test`. Never point this at a remote database. |
-| `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_DEV_BYPASS`, `ALLOWED_EMAILS` | Later | Only for the deferred Google SSO path; not needed in the Basic Auth launch. See Access. |
+| `BASIC_AUTH_USER`, `BASIC_AUTH_PASSWORD` | Fallback | Only for the dormant HTTP Basic Auth fallback; unused while Google SSO is active. See Access. |
 
 ## Deploy
 
-The read-only DB role is a human task (not performed by the build). The Basic Auth launch needs only three env vars.
+The read-only DB role and the Google OAuth client are human tasks (not performed by the build).
 
 1. **Vercel project.** Create a Vercel project named `fp-onboarding-dashboard`, connect this repository, and let it detect Next.js. Deploys track `main`.
-2. **Read-only database role.** Provision a dedicated read-only Postgres role on the onboarding Supabase and use its connection string as `DATABASE_URL`. Use the Supabase **Session** pooler string (port 5432, `...pooler.supabase.com`) since the client uses prepared statements. The dashboard only issues SELECTs; the role should have no write access. For example:
+2. **Google OAuth client.** In the Google Cloud console (FieldPulse Workspace org), set the OAuth consent screen to **Internal**, then create an OAuth 2.0 client (type: Web application). Add the authorized redirect URI `https://<your-vercel-domain>/api/auth/callback/google` (confirm the exact host in Vercel -> Settings -> Domains). Put the client id and secret in `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET`.
+3. **Read-only database role.** Provision a dedicated read-only Postgres role on the onboarding Supabase and use its connection string as `DATABASE_URL`. Use the Supabase **Session** pooler string (port 5432, `...pooler.supabase.com`) since the client uses prepared statements. The dashboard only issues SELECTs; the role should have no write access. For example:
    ```sql
    create role onboarding_dashboard_ro login password '<strong-password>';
    grant usage on schema public to onboarding_dashboard_ro;
    grant select on wizard_sessions, wizard_module_data, import_jobs to onboarding_dashboard_ro;
    ```
    Confirm the role cannot insert, update, or delete before wiring it up.
-3. **Environment variables.** In the Vercel project settings set `DATABASE_URL`, `BASIC_AUTH_USER`, and `BASIC_AUTH_PASSWORD` (Production, and Preview if you want preview deploys gated). `DATABASE_URL` must be set before the first deploy - the build reads it while collecting page data.
-4. **Deploy**, then open the site and sign in with the Basic Auth credentials.
+4. **Environment variables.** In the Vercel project settings set `DATABASE_URL`, `AUTH_SECRET` (generate with `npx auth secret`), `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, and `ALLOWED_EMAILS` (for example `@fieldpulse.com`). Set these before the first deploy - the build reads `DATABASE_URL` while collecting page data, and the SSO gate needs the `AUTH_*` vars at runtime. Do **not** set `AUTH_DEV_BYPASS` in production.
+5. **Deploy**, then open the site and sign in with an allowlisted Google account.
 
-To move to Google SSO later, follow [Access](#access): restore the Auth.js middleware, create a Google OAuth client (redirect `https://<domain>/api/auth/callback/google`), and set the `AUTH_*` and `ALLOWED_EMAILS` vars.
+To fall back to shared Basic Auth, follow [Access](#access): restore the Basic Auth middleware in `middleware.ts` and set `BASIC_AUTH_USER` / `BASIC_AUTH_PASSWORD`.
 
 ## Scope (V1)
 
