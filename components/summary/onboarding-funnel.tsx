@@ -18,7 +18,16 @@ const MODULE_LABELS: Record<string, string> = {
 // the step; the filled segment is how many completed it. Bars shrink down the
 // list (the funnel), and the gap between light and filled is where accounts
 // stall on a step.
-export function OnboardingFunnel({ steps, totalLinks }: { steps: ModuleDropOff[]; totalLinks: number }) {
+export function OnboardingFunnel({
+  steps,
+  totalLinks,
+  startedCount,
+}: {
+  steps: ModuleDropOff[];
+  totalLinks: number;
+  startedCount: number;
+}) {
+  const startedPct = totalLinks === 0 ? 0 : Math.round((startedCount / totalLinks) * 100);
   return (
     <Card className="h-full">
       <CardHeader>
@@ -34,6 +43,12 @@ export function OnboardingFunnel({ steps, totalLinks }: { steps: ModuleDropOff[]
             Completed
           </span>
         </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Started:{" "}
+          <span className="font-medium tabular-nums text-foreground">{startedCount}</span> of{" "}
+          <span className="tabular-nums">{totalLinks}</span> links ({startedPct}% answered the first
+          question)
+        </p>
       </CardHeader>
       <CardContent>
         {steps.length === 0 || totalLinks === 0 ? (

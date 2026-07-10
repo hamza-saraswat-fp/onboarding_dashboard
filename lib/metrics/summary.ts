@@ -18,9 +18,63 @@ export function totalCompletions(sessions: WizardSession[]): number {
 }
 
 // Completed links divided by total links, as a 0..1 ratio (0 when no links).
+// This is the raw, generated-based rate. The UI shows the of-started rate below
+// instead; this stays for reference and for callers that want the raw view.
 export function completionRate(sessions: WizardSession[]): number {
   if (sessions.length === 0) return 0;
   return totalCompletions(sessions) / sessions.length;
+}
+
+// "First Steps Started" signal. A session counts as started when it saved at
+// least one real answer (a wizard_module_data row with non-empty form_data), or
+// it is completed. The module-row rule is the best signal in this database that
+// a real person engaged with the wizard, as opposed to a link that was generated
+// but never sent or never opened, so it removes those never-sent links from the
+// completion-rate denominator. The completed guard means a completed onboarding
+// always counts as started, so completions can never exceed started and the
+// of-started rate never exceeds 100%.
+//
+// Returned as an id set so one definition drives every surface (KPIs, funnel,
+// trends, breakdown): build it once, then intersect with each surface's session
+// list via startedCount.
+export function startedSessionIds(
+  sessions: WizardSession[],
+  moduleData: WizardModuleData[],
+): Set<string> {
+  const ids = new Set<string>();
+  for (const m of moduleData) {
+    if (hasAnswers(m.formData)) ids.add(m.sessionId);
+  }
+  for (const s of sessions) {
+    if (s.status === "completed") ids.add(s.id);
+  }
+  return ids;
+}
+
+// True when form_data holds at least one saved field (not an empty autosave).
+function hasAnswers(formData: Record<string, unknown>): boolean {
+  return formData != null && typeof formData === "object" && Object.keys(formData).length > 0;
+}
+
+// How many of these sessions are in the started set.
+export function startedCount(sessions: WizardSession[], startedIds: Set<string>): number {
+  return sessions.reduce((n, s) => (startedIds.has(s.id) ? n + 1 : n), 0);
+}
+
+// Started divided by total links, as a 0..1 ratio (0 when no links).
+export function startRate(sessions: WizardSession[], startedIds: Set<string>): number {
+  if (sessions.length === 0) return 0;
+  return startedCount(sessions, startedIds) / sessions.length;
+}
+
+// Completed divided by started, as a 0..1 ratio (0 when nobody started).
+export function completionRateOfStarted(
+  sessions: WizardSession[],
+  startedIds: Set<string>,
+): number {
+  const started = startedCount(sessions, startedIds);
+  if (started === 0) return 0;
+  return totalCompletions(sessions) / started;
 }
 
 // Mean over sessions of each session's completed-module fraction (0..1). A

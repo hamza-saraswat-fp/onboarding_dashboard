@@ -10,10 +10,13 @@ import {
 import {
   totalLinks,
   totalCompletions,
-  completionRate,
   avgProgress,
   timeToComplete,
   lifecycleBreakdown,
+  startedSessionIds,
+  startedCount,
+  startRate,
+  completionRateOfStarted,
 } from "@/lib/metrics/summary";
 import { moduleDropOff } from "@/lib/metrics/modules";
 import { topSelectionsBySection } from "@/lib/metrics/selections";
@@ -56,16 +59,21 @@ function resolveDimension(value: string | undefined): Dimension | null {
 }
 
 // One trend point per time bucket, reusing the metric functions. Rates are
-// derived from the bucket's own sessions so aggregation stays correct.
-function toTrendPoint(bucket: SessionBucket): TrendPoint {
-  const rate = completionRate(bucket.sessions);
+// derived from the bucket's own sessions so aggregation stays correct. The
+// completion rate here is of-started (completed / started), matching the KPI
+// row; startedIds is the one shared started set.
+function toTrendPoint(bucket: SessionBucket, startedIds: Set<string>): TrendPoint {
+  const started = startedCount(bucket.sessions, startedIds);
+  const completions = totalCompletions(bucket.sessions);
+  const rate = started === 0 ? 0 : completions / started;
   const ttc = timeToComplete(bucket.sessions);
   return {
     key: bucket.key,
     volume: bucket.sessions.length,
-    completions: totalCompletions(bucket.sessions),
+    started,
+    completions,
     completionRate: rate,
-    dropOffRate: 1 - rate,
+    dropOffRate: started === 0 ? 0 : 1 - rate,
     avgTimeToCompleteMs: ttc ? ttc.meanMs : null,
   };
 }
@@ -93,6 +101,12 @@ export default async function SummaryPage({
   const realSessions = allSessions.filter((s) => !isTestAccount(s.companyId, nameOf(s)));
   const testSessions = allSessions.filter((s) => isTestAccount(s.companyId, nameOf(s)));
 
+  // One "started" set drives every surface (KPIs, funnel, trends, breakdown):
+  // a link counts as started once it saved a real answer (or completed). Built
+  // over the full real history so the not-date-scoped trends and the date-scoped
+  // KPIs read from a single consistent definition.
+  const startedIdsAll = startedSessionIds(realSessions, allModuleData);
+
   // Scope by the selected date range (on createdAt), then narrow the module and
   // import rows to the surviving sessions so every metric agrees on the window.
   let sessions = realSessions;
@@ -107,8 +121,10 @@ export default async function SummaryPage({
 
   const summary: SummaryMetrics = {
     totalLinks: totalLinks(sessions),
+    startedCount: startedCount(sessions, startedIdsAll),
     totalCompletions: totalCompletions(sessions),
-    completionRate: completionRate(sessions),
+    startRate: startRate(sessions, startedIdsAll),
+    completionRateOfStarted: completionRateOfStarted(sessions, startedIdsAll),
     avgProgress: avgProgress(sessions, moduleData),
     timeToComplete: timeToComplete(sessions),
     totalSubmissions: sessions.filter((s) => s.submittedAt !== null).length,
@@ -161,12 +177,13 @@ export default async function SummaryPage({
   // Trends span the full history (independent of the KPI date range) so the
   // timeline has enough buckets to be meaningful. Test accounts are excluded.
   const trends = {
-    weekly: bucketByWeek(realSessions).map(toTrendPoint),
-    monthly: bucketByMonth(realSessions).map(toTrendPoint),
+    weekly: bucketByWeek(realSessions).map((b) => toTrendPoint(b, startedIdsAll)),
+    monthly: bucketByMonth(realSessions).map((b) => toTrendPoint(b, startedIdsAll)),
   };
 
   // When a breakdown dimension is active, group the (date-scoped) sessions and
-  // compute the key metrics per group.
+  // compute the key metrics per group. Completion rate is of-started, matching
+  // the KPI row.
   let breakdownData: { dimension: string; rows: BreakdownRow[] } | null = null;
   if (dimension) {
     const groups = groupByDimension(sessions, dimension);
@@ -174,11 +191,13 @@ export default async function SummaryPage({
       .map(([value, groupSessions]) => {
         const ids = new Set(groupSessions.map((s) => s.id));
         const groupModules = moduleData.filter((m) => ids.has(m.sessionId));
+        const started = startedCount(groupSessions, startedIdsAll);
         return {
           value,
           totalLinks: totalLinks(groupSessions),
+          started,
           totalCompletions: totalCompletions(groupSessions),
-          completionRate: completionRate(groupSessions),
+          completionRate: started === 0 ? 0 : totalCompletions(groupSessions) / started,
           avgProgress: avgProgress(groupSessions, groupModules),
         };
       })

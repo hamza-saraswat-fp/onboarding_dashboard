@@ -15,8 +15,10 @@ import { AccountsTable } from "./accounts-table";
 
 export interface SummaryMetrics {
   totalLinks: number;
+  startedCount: number;
   totalCompletions: number;
-  completionRate: number; // 0..1
+  startRate: number; // 0..1, started / generated
+  completionRateOfStarted: number; // 0..1, completed / started
   avgProgress: number; // 0..1
   timeToComplete: { meanMs: number; medianMs: number } | null;
   totalSubmissions: number;
@@ -70,7 +72,11 @@ export function SummaryView({
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <OnboardingFunnel steps={moduleDropOff} totalLinks={summary.totalLinks} />
+          <OnboardingFunnel
+            steps={moduleDropOff}
+            totalLinks={summary.totalLinks}
+            startedCount={summary.startedCount}
+          />
         </div>
         <div className="space-y-4">
           <LifecycleCard lifecycle={summary.lifecycle} />

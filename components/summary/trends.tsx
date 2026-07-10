@@ -2,26 +2,28 @@
 
 import { useState } from "react";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 
 export interface TrendPoint {
   key: string;
   volume: number;
+  started: number;
   completions: number;
-  completionRate: number; // 0..1
-  dropOffRate: number; // 0..1
+  completionRate: number; // 0..1, completed / started
+  dropOffRate: number; // 0..1, started but not completed / started
   avgTimeToCompleteMs: number | null;
 }
 
-type Metric = "volume" | "completionRate" | "dropOffRate" | "avgTime";
+type Metric = "volume" | "startRate" | "completionRate" | "dropOffRate" | "avgTime";
 type Granularity = "weekly" | "monthly";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const METRICS: { key: Metric; label: string }[] = [
   { key: "volume", label: "Volume" },
+  { key: "startRate", label: "Start rate" },
   { key: "completionRate", label: "Completion rate" },
   { key: "dropOffRate", label: "Drop-off" },
   { key: "avgTime", label: "Avg time to complete" },
@@ -29,30 +31,36 @@ const METRICS: { key: Metric; label: string }[] = [
 
 function metricValue(p: TrendPoint, metric: Metric): number {
   if (metric === "volume") return p.volume;
+  if (metric === "startRate") return p.volume === 0 ? 0 : Math.round((p.started / p.volume) * 100);
   if (metric === "completionRate") return Math.round(p.completionRate * 100);
   if (metric === "dropOffRate") return Math.round(p.dropOffRate * 100);
   return p.avgTimeToCompleteMs != null ? Number((p.avgTimeToCompleteMs / DAY_MS).toFixed(1)) : 0;
 }
 
 // Aggregate a set of buckets correctly (rates from totals, time weighted by
-// completions) for the before/after comparison.
+// completions) for the before/after comparison. Completion and drop-off are
+// of-started, so they divide by the started total, not by volume.
 function aggregate(points: TrendPoint[]) {
   const volume = points.reduce((sum, p) => sum + p.volume, 0);
+  const started = points.reduce((sum, p) => sum + p.started, 0);
   const completions = points.reduce((sum, p) => sum + p.completions, 0);
-  const completionRate = volume ? completions / volume : 0;
+  const completionRate = started ? completions / started : 0;
   const timed = points.reduce((sum, p) => sum + (p.avgTimeToCompleteMs != null ? p.completions : 0), 0);
   const totalMs = points.reduce((sum, p) => sum + (p.avgTimeToCompleteMs != null ? p.avgTimeToCompleteMs * p.completions : 0), 0);
   return {
     volume,
+    started,
     completions,
+    startRate: volume ? started / volume : 0,
     completionRate,
-    dropOffRate: 1 - completionRate,
+    dropOffRate: started ? 1 - completionRate : 0,
     avgTimeToCompleteMs: timed ? totalMs / timed : null,
   };
 }
 
 function formatAggregate(agg: ReturnType<typeof aggregate>, metric: Metric): string {
   if (metric === "volume") return String(agg.volume);
+  if (metric === "startRate") return `${Math.round(agg.startRate * 100)}%`;
   if (metric === "completionRate") return `${Math.round(agg.completionRate * 100)}%`;
   if (metric === "dropOffRate") return `${Math.round(agg.dropOffRate * 100)}%`;
   return agg.avgTimeToCompleteMs != null ? `${(agg.avgTimeToCompleteMs / DAY_MS).toFixed(1)} days` : "n/a";
@@ -77,6 +85,7 @@ export function Trends({ weekly, monthly }: { weekly: TrendPoint[]; monthly: Tre
     <Card>
       <CardHeader className="gap-3">
         <CardTitle>Trends over time</CardTitle>
+        <CardDescription>Start rate is of links generated; completion and drop-off are of accounts that started.</CardDescription>
         <div className="flex flex-wrap items-center gap-2">
           {METRICS.map((m) => (
             <Button
