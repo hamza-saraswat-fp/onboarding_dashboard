@@ -34,7 +34,10 @@ export default auth((req) => {
 
 export const config = {
   // Protect everything except the auth routes, the public sign-in page, Next
-  // internals, favicon, and the 403 page. Excluding /signin keeps the
-  // unauthenticated redirect from looping back onto itself.
-  matcher: ["/((?!api/auth|signin|_next/static|_next/image|favicon.ico|403).*)"],
+  // internals, favicon, static files, and the 403 page. Excluding /signin keeps
+  // the unauthenticated redirect from looping back onto itself. The `.*\..*`
+  // clause excludes any path with a file extension (the FieldPulse logo, svgs)
+  // so public/ assets load for unauthenticated viewers, e.g. the logo on the
+  // sign-in page; app routes and /api endpoints have no dot and stay gated.
+  matcher: ["/((?!api/auth|signin|_next/static|_next/image|favicon.ico|403|.*\\..*).*)"],
 };
