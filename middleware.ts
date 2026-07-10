@@ -1,31 +1,38 @@
-// Route protection for the quick launch: every route requires HTTP Basic Auth
-// against BASIC_AUTH_USER / BASIC_AUTH_PASSWORD. This is a shared-credential
-// stopgap so we can deploy and gather feedback.
+// Route protection: every route (except the auth routes, static assets, and the
+// 403 page itself) requires an authenticated, allowlisted user.
 //
-// The Google SSO path is kept in place but dormant (lib/auth.ts,
-// app/api/auth/[...nextauth]/route.ts, lib/auth/allowlist.ts, the 403 page). To
-// switch the gate back to Google SSO, restore the Auth.js middleware here.
+// - Unauthenticated -> redirect to the Auth.js sign-in page.
+// - Authenticated but not allowlisted -> the 403 page.
+// - Dev bypass (AUTH_DEV_BYPASS, non-production) -> treated as the stub user.
+//
+// This is the active gate: Google SSO + an ALLOWED_EMAILS allowlist. The shared
+// HTTP Basic Auth path (lib/auth/basic-auth.ts) is kept in place but dormant as
+// a fallback; to switch back, restore the Basic Auth middleware here.
 
-import { NextResponse, type NextRequest } from "next/server";
-import { verifyBasicAuth } from "@/lib/auth/basic-auth";
+import { NextResponse } from "next/server";
+import { auth, isDevBypass, DEV_BYPASS_USER } from "@/lib/auth";
+import { isAllowed } from "@/lib/auth/allowlist";
 
-function requireAuth(): NextResponse {
-  return new NextResponse("Authentication required.", {
-    status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="Onboarding Dashboard", charset="UTF-8"' },
-  });
-}
+export default auth((req) => {
+  const session = isDevBypass ? { user: DEV_BYPASS_USER } : req.auth;
+  const email = session?.user?.email ?? null;
+  const { nextUrl } = req;
 
-export function middleware(req: NextRequest) {
-  const ok = verifyBasicAuth(
-    req.headers.get("authorization"),
-    process.env.BASIC_AUTH_USER,
-    process.env.BASIC_AUTH_PASSWORD,
-  );
-  return ok ? NextResponse.next() : requireAuth();
-}
+  if (!session) {
+    const signInUrl = new URL("/api/auth/signin", nextUrl.origin);
+    signInUrl.searchParams.set("callbackUrl", nextUrl.pathname + nextUrl.search);
+    return NextResponse.redirect(signInUrl);
+  }
+
+  if (!isAllowed(email)) {
+    return NextResponse.rewrite(new URL("/403", nextUrl.origin), { status: 403 });
+  }
+
+  return NextResponse.next();
+});
 
 export const config = {
-  // Gate everything except Next internals and the favicon.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // Protect everything except the auth routes, Next internals, favicon, and the
+  // 403 page (so the not-allowlisted rewrite does not loop).
+  matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico|403).*)"],
 };
