@@ -20,6 +20,13 @@ export const DEV_BYPASS_USER = { name: "Dev User", email: "dev@fieldpulse.com" }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [Google],
+  // Use the branded sign-in page (app/signin) instead of the default Auth.js
+  // screen. error points OAuth errors back at it too, so the whole
+  // unauthenticated surface stays on-brand.
+  pages: {
+    signIn: "/signin",
+    error: "/signin",
+  },
 });
 
 // Bypass-aware session accessor. Callers (pages, middleware) read the session

@@ -1,7 +1,8 @@
-// Route protection: every route (except the auth routes, static assets, and the
-// 403 page itself) requires an authenticated, allowlisted user.
+// Route protection: every route (except the auth routes, the sign-in page,
+// static assets, and the 403 page itself) requires an authenticated, allowlisted
+// user.
 //
-// - Unauthenticated -> redirect to the Auth.js sign-in page.
+// - Unauthenticated -> redirect to the branded /signin page.
 // - Authenticated but not allowlisted -> the 403 page.
 // - Dev bypass (AUTH_DEV_BYPASS, non-production) -> treated as the stub user.
 //
@@ -19,7 +20,7 @@ export default auth((req) => {
   const { nextUrl } = req;
 
   if (!session) {
-    const signInUrl = new URL("/api/auth/signin", nextUrl.origin);
+    const signInUrl = new URL("/signin", nextUrl.origin);
     signInUrl.searchParams.set("callbackUrl", nextUrl.pathname + nextUrl.search);
     return NextResponse.redirect(signInUrl);
   }
@@ -32,7 +33,8 @@ export default auth((req) => {
 });
 
 export const config = {
-  // Protect everything except the auth routes, Next internals, favicon, and the
-  // 403 page (so the not-allowlisted rewrite does not loop).
-  matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico|403).*)"],
+  // Protect everything except the auth routes, the public sign-in page, Next
+  // internals, favicon, and the 403 page. Excluding /signin keeps the
+  // unauthenticated redirect from looping back onto itself.
+  matcher: ["/((?!api/auth|signin|_next/static|_next/image|favicon.ico|403).*)"],
 };
