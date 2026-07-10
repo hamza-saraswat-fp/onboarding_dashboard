@@ -4,8 +4,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 // Branded sign-in page. Replaces the default Auth.js sign-in screen (wired via
-// pages.signIn in lib/auth). It echoes the app shell: a navy band with the white
-// FieldPulse logo over a white card. The single action starts the Google OAuth
+// pages.signIn in lib/auth). A white card floats on a navy background, with the
+// navy FieldPulse logo at the top. The single action starts the Google OAuth
 // flow through an Auth.js server action, so no client component is needed.
 //
 // This route is public (excluded from the middleware matcher); the allowlist gate
@@ -35,14 +35,18 @@ export default async function SignInPage({
   const error = errorMessage(params.error);
 
   return (
-    <main className="flex flex-1 items-center justify-center bg-gradient-to-b from-fp-fog/40 to-background px-6 py-12">
-      <div className="w-full max-w-sm overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-        <div className="flex justify-center bg-fp-navy px-8 py-8">
-          <Image src="/fieldpulse-logo-white.png" alt="FieldPulse" width={150} height={32} priority />
-        </div>
-
-        <div className="px-8 py-8 text-center">
-          <h1 className="text-base font-semibold text-foreground">Onboarding Dashboard</h1>
+    <main className="flex flex-1 items-center justify-center bg-fp-navy px-6 py-12">
+      <div className="w-full max-w-sm rounded-2xl bg-card shadow-2xl">
+        <div className="px-8 py-10 text-center">
+          <Image
+            src="/fieldpulse-logo.png"
+            alt="FieldPulse"
+            width={170}
+            height={36}
+            priority
+            className="mx-auto"
+          />
+          <h1 className="mt-8 text-base font-semibold text-foreground">Onboarding Dashboard</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
             Internal analytics for the FieldPulse onboarding funnel.
           </p>
