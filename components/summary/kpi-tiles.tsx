@@ -68,7 +68,7 @@ function Stage({
   sub?: string;
 }) {
   return (
-    <div className="flex flex-1 items-start gap-3">
+    <div className="flex flex-1 items-start gap-3 rounded-xl border bg-white px-4 py-4 shadow-sm">
       <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg text-white ${chip}`}>
         {glyph}
       </span>
@@ -125,8 +125,8 @@ export function KpiTiles({ summary }: { summary: SummaryMetrics }) {
   const ttc = summary.timeToComplete;
   return (
     <div className="space-y-4">
-      <Card className="bg-gradient-to-br from-fp-navy/5 via-fp-cobalt/5 to-fp-sky/10 ring-1 ring-fp-cobalt/15">
-        <CardContent className="flex flex-col gap-5 py-5 sm:flex-row sm:items-center sm:gap-2">
+      <Card className="bg-gradient-to-br from-fp-navy/[0.08] via-fp-cobalt/[0.06] to-fp-sky/[0.14] ring-1 ring-fp-cobalt/15">
+        <CardContent className="flex flex-col gap-3 py-5 sm:flex-row sm:items-stretch sm:gap-3">
           <Stage glyph={<LinkGlyph />} chip="bg-fp-navy" label="Links generated" value={String(summary.totalLinks)} />
           <Connector rate={formatPercent(summary.startRate)} label="start rate" />
           <Stage
