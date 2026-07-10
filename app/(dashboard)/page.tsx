@@ -17,6 +17,9 @@ import {
   startedCount,
   startRate,
   completionRateOfStarted,
+  avgProgressOfStarted,
+  timeToCompleteActive,
+  importSuccessRate,
 } from "@/lib/metrics/summary";
 import { moduleDropOff } from "@/lib/metrics/modules";
 import { topSelectionsBySection } from "@/lib/metrics/selections";
@@ -107,6 +110,11 @@ export default async function SummaryPage({
   // KPIs read from a single consistent definition.
   const startedIdsAll = startedSessionIds(realSessions, allModuleData);
 
+  // Total setup steps in the wizard, taken as the distinct modules present in
+  // the data, so avg progress is anchored to the whole wizard rather than just
+  // the steps a given account happened to touch.
+  const totalSteps = new Set(allModuleData.map((m) => m.moduleNumber)).size;
+
   // Scope by the selected date range (on createdAt), then narrow the module and
   // import rows to the surviving sessions so every metric agrees on the window.
   let sessions = realSessions;
@@ -125,9 +133,9 @@ export default async function SummaryPage({
     totalCompletions: totalCompletions(sessions),
     startRate: startRate(sessions, startedIdsAll),
     completionRateOfStarted: completionRateOfStarted(sessions, startedIdsAll),
-    avgProgress: avgProgress(sessions, moduleData),
-    timeToComplete: timeToComplete(sessions),
-    totalSubmissions: sessions.filter((s) => s.submittedAt !== null).length,
+    avgProgress: avgProgressOfStarted(sessions, moduleData, startedIdsAll, totalSteps),
+    timeToComplete: timeToCompleteActive(sessions, moduleData),
+    importSuccessRate: importSuccessRate(sessions),
     submissionOutcomes: {
       success: importJobs.filter((j) => j.status === "success").length,
       failed: importJobs.filter((j) => j.status === "failed").length,

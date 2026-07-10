@@ -19,9 +19,9 @@ export interface SummaryMetrics {
   totalCompletions: number;
   startRate: number; // 0..1, started / generated
   completionRateOfStarted: number; // 0..1, completed / started
-  avgProgress: number; // 0..1
-  timeToComplete: { meanMs: number; medianMs: number } | null;
-  totalSubmissions: number;
+  avgProgress: number; // 0..1, mean setup progress of accounts that started
+  timeToComplete: { meanMs: number; medianMs: number } | null; // active time (first answer -> submit)
+  importSuccessRate: number | null; // 0..1, completed / (completed + submission_failed)
   submissionOutcomes: { success: number; failed: number; skipped: number };
   lifecycle: Record<"in_progress" | "completed" | "expired" | "submission_failed", number>;
 }

@@ -99,7 +99,7 @@ function Connector({ rate, label }: { rate: string; label: string }) {
 }
 
 // A quiet secondary stat tile with a small colored marker.
-function Stat({ label, value, dot }: { label: string; value: string; dot: string }) {
+function Stat({ label, value, dot, hint }: { label: string; value: string; dot: string; hint?: string }) {
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -110,6 +110,7 @@ function Stat({ label, value, dot }: { label: string; value: string; dot: string
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-semibold text-foreground">{value}</div>
+        {hint ? <div className="mt-0.5 text-xs text-muted-foreground">{hint}</div> : null}
       </CardContent>
     </Card>
   );
@@ -148,10 +149,30 @@ export function KpiTiles({ summary }: { summary: SummaryMetrics }) {
       </Card>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="Avg progress" value={formatPercent(summary.avgProgress)} dot="bg-fp-cobalt" />
-        <Stat label="Avg time to complete" value={ttc ? humanizeMs(ttc.meanMs) : "n/a"} dot="bg-fp-sky" />
-        <Stat label="Median time to complete" value={ttc ? humanizeMs(ttc.medianMs) : "n/a"} dot="bg-fp-aqua" />
-        <Stat label="Submissions" value={String(summary.totalSubmissions)} dot="bg-fp-quartz" />
+        <Stat
+          label="Avg progress"
+          value={formatPercent(summary.avgProgress)}
+          hint="of accounts that started"
+          dot="bg-fp-cobalt"
+        />
+        <Stat
+          label="Avg time to complete"
+          value={ttc ? humanizeMs(ttc.meanMs) : "n/a"}
+          hint="from first answer to submit"
+          dot="bg-fp-sky"
+        />
+        <Stat
+          label="Median time to complete"
+          value={ttc ? humanizeMs(ttc.medianMs) : "n/a"}
+          hint="from first answer to submit"
+          dot="bg-fp-aqua"
+        />
+        <Stat
+          label="Import success"
+          value={summary.importSuccessRate === null ? "n/a" : formatPercent(summary.importSuccessRate)}
+          hint="of setups submitted"
+          dot="bg-fp-quartz"
+        />
       </div>
     </div>
   );

@@ -136,3 +136,78 @@ export function lifecycleBreakdown(sessions: WizardSession[]): Record<WizardStat
   for (const s of sessions) counts[s.status] += 1;
   return counts;
 }
+
+// Average setup progress among accounts that started: the mean, over started
+// sessions, of completed modules / totalSteps. Excluding never-started links is
+// the point, so unsent links no longer drag it toward zero the way a
+// generated-denominator average does. totalSteps is the number of setup steps in
+// the wizard; the caller passes the count of distinct modules seen in the data.
+// Returns 0 when nobody started or there are no steps.
+export function avgProgressOfStarted(
+  sessions: WizardSession[],
+  moduleData: WizardModuleData[],
+  startedIds: Set<string>,
+  totalSteps: number,
+): number {
+  if (totalSteps <= 0) return 0;
+  const started = sessions.filter((s) => startedIds.has(s.id));
+  if (started.length === 0) return 0;
+
+  const completeBySession = new Map<string, number>();
+  for (const m of moduleData) {
+    if (m.isComplete) completeBySession.set(m.sessionId, (completeBySession.get(m.sessionId) ?? 0) + 1);
+  }
+
+  let sum = 0;
+  for (const s of started) {
+    sum += Math.min(1, (completeBySession.get(s.id) ?? 0) / totalSteps);
+  }
+  return sum / started.length;
+}
+
+// Active time to complete: mean and median of (submittedAt - first module
+// savedAt) over completed sessions that have both a submission and at least one
+// saved module. Unlike timeToComplete this starts from first activity, not
+// createdAt (link generation), so it excludes the dead time a link sits before
+// the customer first engages. Null when no completed session has measurable
+// activity.
+export function timeToCompleteActive(
+  sessions: WizardSession[],
+  moduleData: WizardModuleData[],
+): TimeToComplete | null {
+  const firstSavedBySession = new Map<string, number>();
+  for (const m of moduleData) {
+    const t = m.savedAt.getTime();
+    const prev = firstSavedBySession.get(m.sessionId);
+    if (prev === undefined || t < prev) firstSavedBySession.set(m.sessionId, t);
+  }
+
+  const durations: number[] = [];
+  for (const s of sessions) {
+    if (s.status !== "completed" || s.submittedAt === null) continue;
+    const first = firstSavedBySession.get(s.id);
+    if (first === undefined) continue;
+    const d = s.submittedAt.getTime() - first;
+    if (d >= 0) durations.push(d);
+  }
+  if (durations.length === 0) return null;
+
+  const meanMs = durations.reduce((total, d) => total + d, 0) / durations.length;
+  return { meanMs, medianMs: median(durations) };
+}
+
+// Of the accounts that reached submission (completed or submission_failed), the
+// share whose setup pushed to FieldPulse without a failure. This is the useful
+// signal behind the old "Submissions" count, which merely duplicated
+// Completions. Null when none have reached submission.
+export function importSuccessRate(sessions: WizardSession[]): number | null {
+  let completed = 0;
+  let failed = 0;
+  for (const s of sessions) {
+    if (s.status === "completed") completed += 1;
+    else if (s.status === "submission_failed") failed += 1;
+  }
+  const submitted = completed + failed;
+  if (submitted === 0) return null;
+  return completed / submitted;
+}

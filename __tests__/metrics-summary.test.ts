@@ -12,6 +12,9 @@ import {
   startedCount,
   startRate,
   completionRateOfStarted,
+  avgProgressOfStarted,
+  timeToCompleteActive,
+  importSuccessRate,
 } from "../lib/metrics/summary";
 import type { WizardSession, WizardStatus, WizardModuleData } from "../lib/types";
 
@@ -154,5 +157,83 @@ describe("first steps started metrics (inline fixtures)", () => {
     expect(startedCount(sessions, startedIds)).toBe(0);
     expect(startRate(sessions, startedIds)).toBe(0);
     expect(completionRateOfStarted(sessions, startedIds)).toBe(0);
+  });
+});
+
+describe("reworked headline metrics", () => {
+  function session(id: string, status: WizardStatus, opts: Partial<WizardSession> = {}): WizardSession {
+    return {
+      id,
+      companyId: id,
+      accessToken: null,
+      salesforceData: {},
+      currentModule: 0,
+      status,
+      createdAt: new Date("2026-06-01T00:00:00.000Z"),
+      submittedAt: null,
+      expiresAt: new Date("2026-06-30T00:00:00.000Z"),
+      ...opts,
+    };
+  }
+  function moduleRow(sessionId: string, moduleNumber: number, isComplete: boolean, savedAt: string): WizardModuleData {
+    return { sessionId, moduleKey: `m${moduleNumber}`, moduleNumber, formData: { a: 1 }, isComplete, savedAt: new Date(savedAt) };
+  }
+  const HOUR = 60 * 60 * 1000;
+
+  it("avgProgressOfStarted averages completed steps over total steps, for starters only", () => {
+    const sessions = [session("c1", "completed"), session("p1", "in_progress"), session("never", "in_progress")];
+    const moduleData = [
+      moduleRow("c1", 0, true, "2026-06-01T01:00:00.000Z"),
+      moduleRow("c1", 1, true, "2026-06-01T02:00:00.000Z"),
+      moduleRow("c1", 2, true, "2026-06-01T03:00:00.000Z"),
+      moduleRow("p1", 0, true, "2026-06-01T01:00:00.000Z"),
+    ];
+    const startedIds = startedSessionIds(sessions, moduleData);
+    // totalSteps 4: c1 = 3/4, p1 = 1/4, "never" excluded -> mean (0.75 + 0.25) / 2 = 0.5
+    expect(avgProgressOfStarted(sessions, moduleData, startedIds, 4)).toBe(0.5);
+  });
+
+  it("avgProgressOfStarted is 0 with no starters or no steps", () => {
+    const none = [session("never", "in_progress")];
+    expect(avgProgressOfStarted(none, [], startedSessionIds(none, []), 9)).toBe(0);
+    const one = [session("c1", "completed")];
+    expect(avgProgressOfStarted(one, [], startedSessionIds(one, []), 0)).toBe(0);
+  });
+
+  it("timeToCompleteActive measures first activity to submission over completed sessions", () => {
+    const sessions = [
+      session("c1", "completed", { submittedAt: new Date("2026-06-01T05:00:00.000Z") }),
+      session("c2", "completed", { submittedAt: new Date("2026-06-01T07:00:00.000Z") }),
+      session("p1", "in_progress"),
+    ];
+    const moduleData = [
+      moduleRow("c1", 0, true, "2026-06-01T02:00:00.000Z"), // 02:00 -> 05:00 = 3h
+      moduleRow("c2", 0, true, "2026-06-01T01:00:00.000Z"), // 01:00 -> 07:00 = 6h
+      moduleRow("p1", 0, false, "2026-06-01T00:30:00.000Z"),
+    ];
+    expect(timeToCompleteActive(sessions, moduleData)).toEqual({ meanMs: 4.5 * HOUR, medianMs: 4.5 * HOUR });
+  });
+
+  it("timeToCompleteActive is null when no completed session has activity", () => {
+    const sessions = [session("c1", "completed", { submittedAt: new Date("2026-06-01T05:00:00.000Z") })];
+    expect(timeToCompleteActive(sessions, [])).toBeNull(); // completed but no module rows
+    expect(timeToCompleteActive([], [])).toBeNull();
+  });
+
+  it("importSuccessRate is completed over completed-plus-failed submissions", () => {
+    const sessions = [
+      session("c1", "completed"),
+      session("c2", "completed"),
+      session("c3", "completed"),
+      session("f1", "submission_failed"),
+      session("p1", "in_progress"),
+      session("e1", "expired"),
+    ];
+    expect(importSuccessRate(sessions)).toBe(0.75); // 3 / (3 + 1)
+  });
+
+  it("importSuccessRate is null when nothing reached submission", () => {
+    expect(importSuccessRate([session("p1", "in_progress")])).toBeNull();
+    expect(importSuccessRate([])).toBeNull();
   });
 });

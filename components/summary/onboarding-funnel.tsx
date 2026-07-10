@@ -13,11 +13,11 @@ const MODULE_LABELS: Record<string, string> = {
   teamsSetup: "Teams setup",
 };
 
-// A readable onboarding funnel: one row per module in order, each bar scaled to
-// the total number of accounts. The light segment is how many accounts reached
-// the step; the filled segment is how many completed it. Bars shrink down the
-// list (the funnel), and the gap between light and filled is where accounts
-// stall on a step.
+// Onboarding drop-off funnel: of the accounts that started, how many reach each
+// setup step, in order. Each bar is the share of starters who reached that step,
+// so the shape shows exactly where people fall off. Scaling to starters (not to
+// every generated link) is what makes the drop-off legible: unsent links, which
+// never reach any step, are not in the denominator.
 export function OnboardingFunnel({
   steps,
   totalLinks,
@@ -32,43 +32,30 @@ export function OnboardingFunnel({
     <Card className="h-full">
       <CardHeader>
         <CardTitle>Onboarding funnel</CardTitle>
-        <CardDescription>How far accounts get through the setup steps.</CardDescription>
-        <div className="mt-1 flex items-center gap-4 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-sm bg-fp-sky/40" aria-hidden />
-            Reached
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-sm bg-primary" aria-hidden />
-            Completed
-          </span>
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
+        <CardDescription>Of the accounts that started, how far they get through setup.</CardDescription>
+        <p className="mt-1 text-xs text-muted-foreground">
           Started:{" "}
           <span className="font-medium tabular-nums text-foreground">{startedCount}</span> of{" "}
-          <span className="tabular-nums">{totalLinks}</span> links ({startedPct}% answered the first
-          question)
+          <span className="tabular-nums">{totalLinks}</span> links ({startedPct}% answered the first question)
         </p>
       </CardHeader>
       <CardContent>
-        {steps.length === 0 || totalLinks === 0 ? (
-          <p className="py-6 text-sm text-muted-foreground">No module activity in this range.</p>
+        {steps.length === 0 || startedCount === 0 ? (
+          <p className="py-6 text-sm text-muted-foreground">No accounts have started in this range.</p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {steps.map((s) => {
-              const reachedPct = Math.round((s.reached / totalLinks) * 100);
-              const completedPct = Math.round((s.completed / totalLinks) * 100);
+              const pct = Math.min(100, Math.round((s.reached / startedCount) * 100));
               return (
-                <div key={s.moduleKey} className="grid grid-cols-[7.5rem_1fr_4.5rem] items-center gap-3 text-sm">
+                <div key={s.moduleKey} className="grid grid-cols-[8rem_1fr_5.5rem] items-center gap-3 text-sm">
                   <span className="truncate text-muted-foreground" title={MODULE_LABELS[s.moduleKey] ?? s.moduleKey}>
                     {MODULE_LABELS[s.moduleKey] ?? s.moduleKey}
                   </span>
-                  <div className="relative h-5 w-full overflow-hidden rounded bg-muted/50">
-                    <div className="absolute inset-y-0 left-0 rounded bg-fp-sky/40" style={{ width: `${reachedPct}%` }} />
-                    <div className="absolute inset-y-0 left-0 rounded bg-primary" style={{ width: `${completedPct}%` }} />
+                  <div className="relative h-6 w-full overflow-hidden rounded bg-muted/50">
+                    <div className="absolute inset-y-0 left-0 rounded bg-fp-cobalt" style={{ width: `${pct}%` }} />
                   </div>
                   <span className="text-right tabular-nums text-muted-foreground">
-                    {s.completed}/{s.reached}
+                    {s.reached} · {pct}%
                   </span>
                 </div>
               );
