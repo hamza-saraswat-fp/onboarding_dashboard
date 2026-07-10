@@ -5,16 +5,11 @@ import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import type { TrendPoint } from "@/lib/metrics/summary";
 
-export interface TrendPoint {
-  key: string;
-  volume: number;
-  started: number;
-  completions: number;
-  completionRate: number; // 0..1, completed / started
-  dropOffRate: number; // 0..1, started but not completed / started
-  avgTimeToCompleteMs: number | null;
-}
+// Re-exported so component consumers can keep importing the shape from here; the
+// canonical definition lives with the metric functions in lib/metrics/summary.
+export type { TrendPoint };
 
 type Metric = "volume" | "startRate" | "completionRate" | "dropOffRate" | "avgTime";
 type Granularity = "weekly" | "monthly";

@@ -196,6 +196,45 @@ export function timeToCompleteActive(
   return { meanMs, medianMs: median(durations) };
 }
 
+// One point on the Trends timeline, for a single time bucket. Rates are of the
+// bucket's own sessions so buckets aggregate correctly. avgTimeToCompleteMs uses
+// the active (first-answer to submit) basis, matching the headline tile, so the
+// trend line and the tile speak the same time definition.
+export interface TrendPoint {
+  key: string;
+  volume: number;
+  started: number;
+  completions: number;
+  completionRate: number; // 0..1, completed / started
+  dropOffRate: number; // 0..1, started but not completed / started
+  avgTimeToCompleteMs: number | null;
+}
+
+// Build a TrendPoint from one bucket's sessions and their module rows. moduleData
+// should be the rows for these sessions (extra rows are harmless: only listed
+// sessions contribute). completionRate is of-started, matching the KPI row, and
+// startedIds is the one shared started set.
+export function trendPoint(
+  key: string,
+  sessions: WizardSession[],
+  moduleData: WizardModuleData[],
+  startedIds: Set<string>,
+): TrendPoint {
+  const started = startedCount(sessions, startedIds);
+  const completions = totalCompletions(sessions);
+  const rate = started === 0 ? 0 : completions / started;
+  const ttc = timeToCompleteActive(sessions, moduleData);
+  return {
+    key,
+    volume: sessions.length,
+    started,
+    completions,
+    completionRate: rate,
+    dropOffRate: started === 0 ? 0 : 1 - rate,
+    avgTimeToCompleteMs: ttc ? ttc.meanMs : null,
+  };
+}
+
 // Of the accounts that reached submission (completed or submission_failed), the
 // share whose setup pushed to FieldPulse without a failure. This is the useful
 // signal behind the old "Submissions" count, which merely duplicated

@@ -15,6 +15,7 @@ import {
   avgProgressOfStarted,
   timeToCompleteActive,
   importSuccessRate,
+  trendPoint,
 } from "../lib/metrics/summary";
 import type { WizardSession, WizardStatus, WizardModuleData } from "../lib/types";
 
@@ -235,5 +236,36 @@ describe("reworked headline metrics", () => {
   it("importSuccessRate is null when nothing reached submission", () => {
     expect(importSuccessRate([session("p1", "in_progress")])).toBeNull();
     expect(importSuccessRate([])).toBeNull();
+  });
+
+  it("trendPoint reports avg time on the first-activity basis, matching the headline tile", () => {
+    const sessions = [
+      session("c1", "completed", {
+        createdAt: new Date("2026-06-01T00:00:00.000Z"),
+        submittedAt: new Date("2026-06-01T05:00:00.000Z"),
+      }),
+      session("p1", "in_progress"),
+    ];
+    const moduleData = [
+      moduleRow("c1", 0, true, "2026-06-01T02:00:00.000Z"), // first activity 02:00 -> submit 05:00 = 3h
+      moduleRow("p1", 0, false, "2026-06-01T00:30:00.000Z"),
+    ];
+    const startedIds = startedSessionIds(sessions, moduleData);
+    const point = trendPoint("2026-W22", sessions, moduleData, startedIds);
+    // 3h active window, not the 5h createdAt -> submit window the old basis reported.
+    expect(point.avgTimeToCompleteMs).toBe(3 * HOUR);
+    expect(point.volume).toBe(2);
+    expect(point.started).toBe(2);
+    expect(point.completions).toBe(1);
+    expect(point.completionRate).toBe(0.5);
+    expect(point.dropOffRate).toBe(0.5);
+  });
+
+  it("trendPoint leaves avg time null when no completed session has activity", () => {
+    const sessions = [session("p1", "in_progress"), session("c1", "completed", { submittedAt: new Date("2026-06-01T05:00:00.000Z") })];
+    const startedIds = startedSessionIds(sessions, []);
+    const point = trendPoint("2026-W22", sessions, [], startedIds);
+    expect(point.avgTimeToCompleteMs).toBeNull();
+    expect(point.completions).toBe(1);
   });
 });

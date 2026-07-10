@@ -11,7 +11,6 @@ import {
   totalLinks,
   totalCompletions,
   avgProgress,
-  timeToComplete,
   lifecycleBreakdown,
   startedSessionIds,
   startedCount,
@@ -20,12 +19,12 @@ import {
   avgProgressOfStarted,
   timeToCompleteActive,
   importSuccessRate,
+  trendPoint,
 } from "@/lib/metrics/summary";
 import { moduleDropOff } from "@/lib/metrics/modules";
 import { topSelectionsBySection } from "@/lib/metrics/selections";
 import { isTestAccount } from "@/lib/test-accounts";
 import { SummaryView, type SummaryMetrics } from "@/components/summary/summary-view";
-import type { TrendPoint } from "@/components/summary/trends";
 import type { BreakdownRow } from "@/components/summary/breakdown-table";
 import {
   salesforceAccountIdFrom,
@@ -59,26 +58,6 @@ const DIMENSION_LABELS: Record<Dimension, string> = {
 
 function resolveDimension(value: string | undefined): Dimension | null {
   return value === "salesSegment" || value === "industry" || value === "numberOfEmployees" ? value : null;
-}
-
-// One trend point per time bucket, reusing the metric functions. Rates are
-// derived from the bucket's own sessions so aggregation stays correct. The
-// completion rate here is of-started (completed / started), matching the KPI
-// row; startedIds is the one shared started set.
-function toTrendPoint(bucket: SessionBucket, startedIds: Set<string>): TrendPoint {
-  const started = startedCount(bucket.sessions, startedIds);
-  const completions = totalCompletions(bucket.sessions);
-  const rate = started === 0 ? 0 : completions / started;
-  const ttc = timeToComplete(bucket.sessions);
-  return {
-    key: bucket.key,
-    volume: bucket.sessions.length,
-    started,
-    completions,
-    completionRate: rate,
-    dropOffRate: started === 0 ? 0 : 1 - rate,
-    avgTimeToCompleteMs: ttc ? ttc.meanMs : null,
-  };
 }
 
 export default async function SummaryPage({
@@ -184,9 +163,18 @@ export default async function SummaryPage({
 
   // Trends span the full history (independent of the KPI date range) so the
   // timeline has enough buckets to be meaningful. Test accounts are excluded.
+  // Group module rows by session once so each bucket can hand its own rows to
+  // trendPoint, which needs them for the active (first-answer to submit) time.
+  const modulesBySession = new Map<string, typeof allModuleData>();
+  for (const m of allModuleData) {
+    const arr = modulesBySession.get(m.sessionId) ?? [];
+    arr.push(m);
+    modulesBySession.set(m.sessionId, arr);
+  }
+  const bucketModules = (b: SessionBucket) => b.sessions.flatMap((s) => modulesBySession.get(s.id) ?? []);
   const trends = {
-    weekly: bucketByWeek(realSessions).map((b) => toTrendPoint(b, startedIdsAll)),
-    monthly: bucketByMonth(realSessions).map((b) => toTrendPoint(b, startedIdsAll)),
+    weekly: bucketByWeek(realSessions).map((b) => trendPoint(b.key, b.sessions, bucketModules(b), startedIdsAll)),
+    monthly: bucketByMonth(realSessions).map((b) => trendPoint(b.key, b.sessions, bucketModules(b), startedIdsAll)),
   };
 
   // When a breakdown dimension is active, group the (date-scoped) sessions and
