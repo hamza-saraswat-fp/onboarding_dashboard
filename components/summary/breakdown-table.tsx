@@ -4,8 +4,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 export interface BreakdownRow {
   value: string;
   totalLinks: number;
+  started: number;
   totalCompletions: number;
-  completionRate: number; // 0..1
+  completionRate: number; // 0..1, completed / started
   avgProgress: number; // 0..1
 }
 
@@ -23,6 +24,7 @@ export function BreakdownTable({ dimensionLabel, rows }: { dimensionLabel: strin
             <TableRow>
               <TableHead>{dimensionLabel}</TableHead>
               <TableHead className="text-right">Links</TableHead>
+              <TableHead className="text-right">Started</TableHead>
               <TableHead className="text-right">Completions</TableHead>
               <TableHead className="text-right">Completion rate</TableHead>
               <TableHead className="text-right">Avg progress</TableHead>
@@ -33,6 +35,7 @@ export function BreakdownTable({ dimensionLabel, rows }: { dimensionLabel: strin
               <TableRow key={r.value}>
                 <TableCell className="font-medium text-foreground">{r.value}</TableCell>
                 <TableCell className="text-right tabular-nums">{r.totalLinks}</TableCell>
+                <TableCell className="text-right tabular-nums">{r.started}</TableCell>
                 <TableCell className="text-right tabular-nums">{r.totalCompletions}</TableCell>
                 <TableCell className="text-right tabular-nums">{Math.round(r.completionRate * 100)}%</TableCell>
                 <TableCell className="text-right tabular-nums">{Math.round(r.avgProgress * 100)}%</TableCell>

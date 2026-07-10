@@ -10,16 +10,21 @@ import {
 import {
   totalLinks,
   totalCompletions,
-  completionRate,
   avgProgress,
-  timeToComplete,
   lifecycleBreakdown,
+  startedSessionIds,
+  startedCount,
+  startRate,
+  completionRateOfStarted,
+  avgProgressOfStarted,
+  timeToCompleteActive,
+  importSuccessRate,
+  trendPoint,
 } from "@/lib/metrics/summary";
 import { moduleDropOff } from "@/lib/metrics/modules";
 import { topSelectionsBySection } from "@/lib/metrics/selections";
 import { isTestAccount } from "@/lib/test-accounts";
 import { SummaryView, type SummaryMetrics } from "@/components/summary/summary-view";
-import type { TrendPoint } from "@/components/summary/trends";
 import type { BreakdownRow } from "@/components/summary/breakdown-table";
 import {
   salesforceAccountIdFrom,
@@ -55,21 +60,6 @@ function resolveDimension(value: string | undefined): Dimension | null {
   return value === "salesSegment" || value === "industry" || value === "numberOfEmployees" ? value : null;
 }
 
-// One trend point per time bucket, reusing the metric functions. Rates are
-// derived from the bucket's own sessions so aggregation stays correct.
-function toTrendPoint(bucket: SessionBucket): TrendPoint {
-  const rate = completionRate(bucket.sessions);
-  const ttc = timeToComplete(bucket.sessions);
-  return {
-    key: bucket.key,
-    volume: bucket.sessions.length,
-    completions: totalCompletions(bucket.sessions),
-    completionRate: rate,
-    dropOffRate: 1 - rate,
-    avgTimeToCompleteMs: ttc ? ttc.meanMs : null,
-  };
-}
-
 export default async function SummaryPage({
   searchParams,
 }: {
@@ -93,6 +83,17 @@ export default async function SummaryPage({
   const realSessions = allSessions.filter((s) => !isTestAccount(s.companyId, nameOf(s)));
   const testSessions = allSessions.filter((s) => isTestAccount(s.companyId, nameOf(s)));
 
+  // One "started" set drives every surface (KPIs, funnel, trends, breakdown):
+  // a link counts as started once it saved a real answer (or completed). Built
+  // over the full real history so the not-date-scoped trends and the date-scoped
+  // KPIs read from a single consistent definition.
+  const startedIdsAll = startedSessionIds(realSessions, allModuleData);
+
+  // Total setup steps in the wizard, taken as the distinct modules present in
+  // the data, so avg progress is anchored to the whole wizard rather than just
+  // the steps a given account happened to touch.
+  const totalSteps = new Set(allModuleData.map((m) => m.moduleNumber)).size;
+
   // Scope by the selected date range (on createdAt), then narrow the module and
   // import rows to the surviving sessions so every metric agrees on the window.
   let sessions = realSessions;
@@ -107,11 +108,13 @@ export default async function SummaryPage({
 
   const summary: SummaryMetrics = {
     totalLinks: totalLinks(sessions),
+    startedCount: startedCount(sessions, startedIdsAll),
     totalCompletions: totalCompletions(sessions),
-    completionRate: completionRate(sessions),
-    avgProgress: avgProgress(sessions, moduleData),
-    timeToComplete: timeToComplete(sessions),
-    totalSubmissions: sessions.filter((s) => s.submittedAt !== null).length,
+    startRate: startRate(sessions, startedIdsAll),
+    completionRateOfStarted: completionRateOfStarted(sessions, startedIdsAll),
+    avgProgress: avgProgressOfStarted(sessions, moduleData, startedIdsAll, totalSteps),
+    timeToComplete: timeToCompleteActive(sessions, moduleData),
+    importSuccessRate: importSuccessRate(sessions),
     submissionOutcomes: {
       success: importJobs.filter((j) => j.status === "success").length,
       failed: importJobs.filter((j) => j.status === "failed").length,
@@ -160,13 +163,23 @@ export default async function SummaryPage({
 
   // Trends span the full history (independent of the KPI date range) so the
   // timeline has enough buckets to be meaningful. Test accounts are excluded.
+  // Group module rows by session once so each bucket can hand its own rows to
+  // trendPoint, which needs them for the active (first-answer to submit) time.
+  const modulesBySession = new Map<string, typeof allModuleData>();
+  for (const m of allModuleData) {
+    const arr = modulesBySession.get(m.sessionId) ?? [];
+    arr.push(m);
+    modulesBySession.set(m.sessionId, arr);
+  }
+  const bucketModules = (b: SessionBucket) => b.sessions.flatMap((s) => modulesBySession.get(s.id) ?? []);
   const trends = {
-    weekly: bucketByWeek(realSessions).map(toTrendPoint),
-    monthly: bucketByMonth(realSessions).map(toTrendPoint),
+    weekly: bucketByWeek(realSessions).map((b) => trendPoint(b.key, b.sessions, bucketModules(b), startedIdsAll)),
+    monthly: bucketByMonth(realSessions).map((b) => trendPoint(b.key, b.sessions, bucketModules(b), startedIdsAll)),
   };
 
   // When a breakdown dimension is active, group the (date-scoped) sessions and
-  // compute the key metrics per group.
+  // compute the key metrics per group. Completion rate is of-started, matching
+  // the KPI row.
   let breakdownData: { dimension: string; rows: BreakdownRow[] } | null = null;
   if (dimension) {
     const groups = groupByDimension(sessions, dimension);
@@ -174,11 +187,13 @@ export default async function SummaryPage({
       .map(([value, groupSessions]) => {
         const ids = new Set(groupSessions.map((s) => s.id));
         const groupModules = moduleData.filter((m) => ids.has(m.sessionId));
+        const started = startedCount(groupSessions, startedIdsAll);
         return {
           value,
           totalLinks: totalLinks(groupSessions),
+          started,
           totalCompletions: totalCompletions(groupSessions),
-          completionRate: completionRate(groupSessions),
+          completionRate: started === 0 ? 0 : totalCompletions(groupSessions) / started,
           avgProgress: avgProgress(groupSessions, groupModules),
         };
       })
