@@ -41,7 +41,7 @@ export function SummaryView({
   breakdownData,
   accountRows,
   testAccountRows,
-  excludedAccountRows,
+  hiddenAccountRows,
 }: {
   range: string;
   breakdown: string;
@@ -53,7 +53,7 @@ export function SummaryView({
   breakdownData: { dimension: string; rows: BreakdownRow[] } | null;
   accountRows: AccountRow[];
   testAccountRows: AccountRow[];
-  excludedAccountRows: AccountRow[];
+  hiddenAccountRows: AccountRow[];
 }) {
   // Open insights automatically when a breakdown is active (the user asked for it).
   const [showInsights, setShowInsights] = useState(breakdownData !== null);
@@ -131,8 +131,8 @@ export function SummaryView({
         <AccountsTable rows={testAccountRows} title="Test accounts" collapsible defaultCollapsed />
       ) : null}
 
-      {excludedAccountRows.length > 0 ? (
-        <AccountsTable rows={excludedAccountRows} title="Excluded links" collapsible defaultCollapsed />
+      {hiddenAccountRows.length > 0 ? (
+        <AccountsTable rows={hiddenAccountRows} title="Hidden" collapsible defaultCollapsed />
       ) : null}
     </div>
   );

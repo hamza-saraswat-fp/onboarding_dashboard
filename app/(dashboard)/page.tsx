@@ -24,7 +24,7 @@ import {
 import { moduleDropOff } from "@/lib/metrics/modules";
 import { topSelectionsBySection } from "@/lib/metrics/selections";
 import { isTestAccount } from "@/lib/test-accounts";
-import { isExcludedAccount } from "@/lib/excluded-accounts";
+import { isHiddenAccount } from "@/lib/hidden-accounts";
 import { SummaryView, type SummaryMetrics } from "@/components/summary/summary-view";
 import type { BreakdownRow } from "@/components/summary/breakdown-table";
 import {
@@ -77,18 +77,19 @@ export default async function SummaryPage({
     listImportJobs(),
   ]);
 
-  // Auto-detected test accounts ("test" + a number) are excluded from every
-  // statistic and shown only in the collapsed table at the bottom.
+  // Test accounts (auto-detected by name) and hidden accounts (a curated list of
+  // real accounts that should not count) are both kept out of every statistic and
+  // shown only in their own collapsed tables at the bottom.
   const nameOf = (s: WizardSession): string | null =>
     typeof s.salesforceData?.companyName === "string" ? s.salesforceData.companyName : null;
-  // Three-way split. Excluded takes precedence over test, so a company that would
-  // match both is counted once (as excluded). Everything else is a real session
+  // Three-way split. Hidden takes precedence over test, so a company that would
+  // match both is counted once (as hidden). Everything else is a real session
   // and drives every metric, the funnel, trends, breakdowns, and the main list.
-  const isExcluded = (s: WizardSession) => isExcludedAccount(s.companyId);
-  const isTest = (s: WizardSession) => !isExcluded(s) && isTestAccount(s.companyId, nameOf(s));
-  const excludedSessions = allSessions.filter(isExcluded);
+  const isHidden = (s: WizardSession) => isHiddenAccount(s.companyId);
+  const isTest = (s: WizardSession) => !isHidden(s) && isTestAccount(s.companyId, nameOf(s));
+  const hiddenSessions = allSessions.filter(isHidden);
   const testSessions = allSessions.filter(isTest);
-  const realSessions = allSessions.filter((s) => !isExcluded(s) && !isTest(s));
+  const realSessions = allSessions.filter((s) => !isHidden(s) && !isTest(s));
 
   // One "started" set drives every surface (KPIs, funnel, trends, breakdown):
   // a link counts as started once it saved a real answer (or completed). Built
@@ -168,7 +169,7 @@ export default async function SummaryPage({
   };
   const accountRows: AccountRow[] = realSessions.map(toRow);
   const testAccountRows: AccountRow[] = testSessions.map(toRow);
-  const excludedAccountRows: AccountRow[] = excludedSessions.map(toRow);
+  const hiddenAccountRows: AccountRow[] = hiddenSessions.map(toRow);
 
   // Trends span the full history (independent of the KPI date range) so the
   // timeline has enough buckets to be meaningful. Test accounts are excluded.
@@ -222,7 +223,7 @@ export default async function SummaryPage({
       breakdownData={breakdownData}
       accountRows={accountRows}
       testAccountRows={testAccountRows}
-      excludedAccountRows={excludedAccountRows}
+      hiddenAccountRows={hiddenAccountRows}
     />
   );
 }
