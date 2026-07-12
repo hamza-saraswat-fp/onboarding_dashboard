@@ -163,6 +163,7 @@ export default async function SummaryPage({
       modulesTotal: a?.total ?? 0,
       createdAt: s.createdAt,
       salesforceUrl: salesforceAccountUrl(salesforceAccountIdFrom(s.salesforceData)),
+      started: startedIdsAll.has(s.id),
     };
   };
   const accountRows: AccountRow[] = realSessions.map(toRow);

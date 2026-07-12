@@ -125,7 +125,7 @@ export function SummaryView({
         ) : null}
       </div>
 
-      <AccountsTable rows={accountRows} />
+      <AccountsTable rows={accountRows} startedFilter />
 
       {testAccountRows.length > 0 ? (
         <AccountsTable rows={testAccountRows} title="Test accounts" collapsible defaultCollapsed />
