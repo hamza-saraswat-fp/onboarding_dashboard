@@ -8,7 +8,6 @@ import { AccountDrawer } from "@/components/account/account-drawer";
 import { StatusPill } from "@/components/account/status-pill";
 import type { WizardStatus } from "@/lib/types";
 import type { AccountRow } from "@/lib/queries/account";
-import { companyIdSortValue } from "@/lib/account-sort";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 25;
@@ -110,12 +109,8 @@ export function AccountsTable({
     const dir = sortDir === "asc" ? 1 : -1;
     return [...filtered].sort((a, b) => {
       switch (sortKey) {
-        case "companyId": {
-          // Numeric company id (creation order): ascending is oldest-first, a rough
-          // way to surface links on existing/old accounts. Search covers name lookup.
-          const diff = companyIdSortValue(a.companyId) - companyIdSortValue(b.companyId);
-          return (diff || 0) * dir;
-        }
+        case "companyId":
+          return displayName(a).localeCompare(displayName(b)) * dir;
         case "status":
           return a.status.localeCompare(b.status) * dir;
         case "progress":
