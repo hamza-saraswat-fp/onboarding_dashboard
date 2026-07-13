@@ -53,6 +53,7 @@ Milestones:
 - Never `--no-verify`. Never bypass commit signing.
 - Secrets never get committed. `.env.example` holds placeholders only; `.env.local` is git-ignored. Real values live in Vercel env vars and 1Password.
 - Read-only forever: this app issues SELECTs only. No insert / update / delete against the onboarding database, ever.
+- Client components must not import runtime *values* from `lib/queries/*` (those modules import the Postgres client, so a value import pulls Node built-ins like `fs`/`net` into the browser bundle and fails `npm run build`). Keep shared pure helpers that client components need in a DB-free module (e.g. `lib/account-sort.ts`); type-only imports from `lib/queries/*` are fine.
 
 ## 6. Verify toolchain
 
@@ -77,3 +78,11 @@ Tests run against a local Postgres seeded from the onboarding app's migrations p
 - Don't expand an issue's scope. If something is missing, note it for a follow-up issue rather than growing the current one.
 - Don't write to the onboarding database.
 - Don't run destructive git ops (`push --force`, `reset --hard`, deleting remote branches beyond the merged PR's own) without explicit approval.
+
+## 9. Dashboard semantics (domain rules)
+
+Non-obvious rules established while building the summary / account views. Respect them; they are easy to break.
+
+- **Per-account progress** is completed modules over the account's *applicable* module count, not over the modules it has reached. Once an account has submitted (`submittedAt` set) it has been through the whole wizard, so the modules it has rows for ARE its applicable set (gated modules, e.g. the ones `nue_gate` skips, never create a row) and a finished account reads 100%. Before submitting, measure against the full wizard length (`totalSteps` = distinct `module_number` count) so a barely-started account does not read 100%. Helpers `wizardProgress` + `progressDenominator` in `lib/queries/account.ts`; the aggregate "Avg progress" tile already used `totalSteps`.
+- **Two suppression lists, kept deliberately separate.** Test accounts are synthetic, auto-detected by name (`lib/test-accounts.ts`: matches `test` / `e2e` and the internal `FP-PROBE-*` / `FP-FIX-*` probes; `TEST_COMPANY_IDS` env for misses). Hidden accounts are real Salesforce accounts a human curates out because they should not count, e.g. a link generated on a pre-existing account (`lib/hidden-accounts.ts`, `HIDDEN_COMPANY_IDS` env; ships empty). Both are excluded from every metric and shelved in their own collapsed table; `app/(dashboard)/page.tsx` does a three-way split with hidden taking precedence over test.
+- **`salesforce_data` is a point-in-time snapshot** captured at link creation and passed through from Salesforce. It is not live (it can differ from the current Salesforce record) and has no date / account-age fields. `0` and `false` render literally; only genuinely absent keys show "Not provided". Any account-age feature (e.g. flagging links generated on pre-existing accounts) needs a date added to the blob upstream.
