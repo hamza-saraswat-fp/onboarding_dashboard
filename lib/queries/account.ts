@@ -9,8 +9,8 @@ export interface AccountDetail {
   companyId: string;
   status: WizardStatus;
   currentModule: number;
-  progress: number; // 0..1 completed modules over the whole wizard's step count
-  totalSteps: number; // total steps in the wizard, the progress denominator
+  progress: number; // 0..1 completed modules over the account's applicable modules
+  modulesTotal: number; // modules that apply (own count once submitted, else whole wizard)
   createdAt: Date;
   submittedAt: Date | null;
   expiresAt: Date;
@@ -57,15 +57,26 @@ export function salesforceAccountUrl(accountId: string | null): string | null {
   return `${SALESFORCE_BASE_URL.replace(/\/$/, "")}/lightning/r/Account/${accountId}/view`;
 }
 
-// Per-account onboarding progress as a 0..1 fraction of the WHOLE wizard: completed
-// modules over the total number of steps in the wizard, not over the modules an
-// account happened to reach. Dividing by modules-reached reads 100% for someone who
-// finished only the first step, which is misleading; anchoring to the full wizard
-// means only a genuinely finished account reads 100%. Capped at 1; 0 when the
-// wizard has no steps.
-export function wizardProgress(completeCount: number, totalSteps: number): number {
-  if (totalSteps <= 0) return 0;
-  return Math.min(1, completeCount / totalSteps);
+// A 0..1 progress fraction, completed over total, capped at 1 (0 when total is 0).
+// "total" is the account's applicable-module count from progressDenominator.
+export function wizardProgress(completeCount: number, total: number): number {
+  if (total <= 0) return 0;
+  return Math.min(1, completeCount / total);
+}
+
+// How many modules actually apply to an account, i.e. the progress denominator.
+// Once an account has submitted, it has been through the whole wizard, so the
+// modules it has rows for ARE its applicable set: gated modules (e.g. the ones
+// nue_gate skips) never create a row, so a fully done account reads 100% against
+// its own count, not a padded wizard length. Before submitting, an account has not
+// reached all its modules yet, so we measure against the full wizard length rather
+// than the few reached so far (which would read 100% after finishing only step 1).
+export function progressDenominator(
+  submitted: boolean,
+  reachedModules: number,
+  totalSteps: number,
+): number {
+  return submitted && reachedModules > 0 ? reachedModules : totalSteps;
 }
 
 export async function getAccountDetail(sessionId: string): Promise<AccountDetail | null> {
@@ -83,7 +94,8 @@ export async function getAccountDetail(sessionId: string): Promise<AccountDetail
   ]);
 
   const completeCount = moduleSelections.filter((m) => m.isComplete).length;
-  const progress = wizardProgress(completeCount, totalSteps);
+  const modulesTotal = progressDenominator(session.submittedAt !== null, moduleSelections.length, totalSteps);
+  const progress = wizardProgress(completeCount, modulesTotal);
 
   return {
     sessionId: session.id,
@@ -91,7 +103,7 @@ export async function getAccountDetail(sessionId: string): Promise<AccountDetail
     status: session.status,
     currentModule: session.currentModule,
     progress,
-    totalSteps,
+    modulesTotal,
     createdAt: session.createdAt,
     submittedAt: session.submittedAt,
     expiresAt: session.expiresAt,
@@ -110,9 +122,9 @@ export interface AccountRow {
   companyId: string;
   companyName: string | null;
   status: WizardStatus;
-  progress: number; // 0..1 completed modules over the whole wizard's step count
+  progress: number; // 0..1 completed modules over the account's applicable modules
   modulesComplete: number;
-  modulesTotal: number; // total steps in the wizard (same for every row)
+  modulesTotal: number; // modules that apply (own count once submitted, else whole wizard)
   createdAt: Date;
   salesforceUrl: string | null; // Lightning link to the Account, when the id is captured
 }

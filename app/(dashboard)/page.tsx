@@ -30,6 +30,7 @@ import {
   salesforceAccountIdFrom,
   salesforceAccountUrl,
   wizardProgress,
+  progressDenominator,
   type AccountRow,
 } from "@/lib/queries/account";
 import type { WizardSession } from "@/lib/types";
@@ -147,14 +148,15 @@ export default async function SummaryPage({
   const toRow = (s: WizardSession): AccountRow => {
     const a = allAgg.get(s.id);
     const name = nameOf(s);
+    const modulesTotal = progressDenominator(s.submittedAt !== null, a?.total ?? 0, totalSteps);
     return {
       id: s.id,
       companyId: s.companyId,
       companyName: name && name.trim() !== "" ? name : null,
       status: s.status,
-      progress: wizardProgress(a?.complete ?? 0, totalSteps),
+      progress: wizardProgress(a?.complete ?? 0, modulesTotal),
       modulesComplete: a?.complete ?? 0,
-      modulesTotal: totalSteps,
+      modulesTotal,
       createdAt: s.createdAt,
       salesforceUrl: salesforceAccountUrl(salesforceAccountIdFrom(s.salesforceData)),
     };

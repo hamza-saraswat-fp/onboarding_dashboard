@@ -2,6 +2,7 @@ import { describe, it, expect, afterAll } from "vitest";
 import { sql } from "../lib/db";
 import {
   getAccountDetail,
+  progressDenominator,
   salesforceAccountIdFrom,
   salesforceAccountUrl,
   wizardProgress,
@@ -23,7 +24,7 @@ describe("getAccountDetail", () => {
     expect(account?.companyId).toBe("company-1");
     expect(account?.status).toBe("completed");
     expect(account?.progress).toBe(1);
-    expect(account?.totalSteps).toBe(9);
+    expect(account?.modulesTotal).toBe(9);
     expect(account?.moduleSelections).toHaveLength(9);
     expect(account?.submitResults).toHaveLength(3);
     expect(account?.submitResults.every((r) => r.status === "success")).toBe(true);
@@ -56,6 +57,24 @@ describe("wizardProgress", () => {
   it("caps at 1 and guards a wizard with no steps", () => {
     expect(wizardProgress(7, 6)).toBe(1);
     expect(wizardProgress(3, 0)).toBe(0);
+  });
+});
+
+describe("progressDenominator", () => {
+  it("uses the account's own reached modules once it has submitted (gated modules never counted)", () => {
+    // Busch Bros.: submitted, 7 modules reached (Users/Teams gated out by nue_gate)
+    // even though the wizard can have 9. Denominator is 7, so 7 complete reads 100%.
+    expect(progressDenominator(true, 7, 9)).toBe(7);
+  });
+
+  it("uses the full wizard length before an account has submitted", () => {
+    // ProTech: in progress, reached only 1 of a 6-step wizard. Denominator is 6, so
+    // 1 complete reads ~17%, not 100%.
+    expect(progressDenominator(false, 1, 6)).toBe(6);
+  });
+
+  it("falls back to the wizard length when a submitted account has no modules", () => {
+    expect(progressDenominator(true, 0, 6)).toBe(6);
   });
 });
 
