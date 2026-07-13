@@ -84,7 +84,7 @@ export function AccountDetail({
   showHeader?: boolean;
 }) {
   const completed = account.moduleSelections.filter((m) => m.isComplete).length;
-  const total = account.moduleSelections.length;
+  const total = account.modulesTotal;
 
   return (
     <div className="@container space-y-6">

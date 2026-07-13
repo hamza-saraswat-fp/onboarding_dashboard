@@ -1,7 +1,7 @@
 // Assembles one account's full onboarding detail for the drill-down view,
 // reusing the read-only session queries. Read-only.
 
-import { getSession, listModuleData, listImportJobs } from "./sessions";
+import { getSession, listModuleData, listImportJobs, wizardStepCount } from "./sessions";
 import type { ImportJob, WizardModuleData, WizardStatus } from "../types";
 
 export interface AccountDetail {
@@ -9,7 +9,8 @@ export interface AccountDetail {
   companyId: string;
   status: WizardStatus;
   currentModule: number;
-  progress: number; // 0..1 fraction of this account's modules that are complete
+  progress: number; // 0..1 completed modules over the account's applicable modules
+  modulesTotal: number; // modules that apply (own count once submitted, else whole wizard)
   createdAt: Date;
   submittedAt: Date | null;
   expiresAt: Date;
@@ -56,6 +57,28 @@ export function salesforceAccountUrl(accountId: string | null): string | null {
   return `${SALESFORCE_BASE_URL.replace(/\/$/, "")}/lightning/r/Account/${accountId}/view`;
 }
 
+// A 0..1 progress fraction, completed over total, capped at 1 (0 when total is 0).
+// "total" is the account's applicable-module count from progressDenominator.
+export function wizardProgress(completeCount: number, total: number): number {
+  if (total <= 0) return 0;
+  return Math.min(1, completeCount / total);
+}
+
+// How many modules actually apply to an account, i.e. the progress denominator.
+// Once an account has submitted, it has been through the whole wizard, so the
+// modules it has rows for ARE its applicable set: gated modules (e.g. the ones
+// nue_gate skips) never create a row, so a fully done account reads 100% against
+// its own count, not a padded wizard length. Before submitting, an account has not
+// reached all its modules yet, so we measure against the full wizard length rather
+// than the few reached so far (which would read 100% after finishing only step 1).
+export function progressDenominator(
+  submitted: boolean,
+  reachedModules: number,
+  totalSteps: number,
+): number {
+  return submitted && reachedModules > 0 ? reachedModules : totalSteps;
+}
+
 export async function getAccountDetail(sessionId: string): Promise<AccountDetail | null> {
   // Guard malformed ids (a user-supplied URL segment) so a bad id returns
   // not-found instead of a Postgres uuid-cast error.
@@ -64,13 +87,15 @@ export async function getAccountDetail(sessionId: string): Promise<AccountDetail
   const session = await getSession(sessionId);
   if (!session) return null;
 
-  const [moduleSelections, submitResults] = await Promise.all([
+  const [moduleSelections, submitResults, totalSteps] = await Promise.all([
     listModuleData([sessionId]),
     listImportJobs([sessionId]),
+    wizardStepCount(),
   ]);
 
   const completeCount = moduleSelections.filter((m) => m.isComplete).length;
-  const progress = moduleSelections.length > 0 ? completeCount / moduleSelections.length : 0;
+  const modulesTotal = progressDenominator(session.submittedAt !== null, moduleSelections.length, totalSteps);
+  const progress = wizardProgress(completeCount, modulesTotal);
 
   return {
     sessionId: session.id,
@@ -78,6 +103,7 @@ export async function getAccountDetail(sessionId: string): Promise<AccountDetail
     status: session.status,
     currentModule: session.currentModule,
     progress,
+    modulesTotal,
     createdAt: session.createdAt,
     submittedAt: session.submittedAt,
     expiresAt: session.expiresAt,
@@ -96,9 +122,9 @@ export interface AccountRow {
   companyId: string;
   companyName: string | null;
   status: WizardStatus;
-  progress: number; // 0..1 fraction of this account's modules that are complete
+  progress: number; // 0..1 completed modules over the account's applicable modules
   modulesComplete: number;
-  modulesTotal: number;
+  modulesTotal: number; // modules that apply (own count once submitted, else whole wizard)
   createdAt: Date;
   salesforceUrl: string | null; // Lightning link to the Account, when the id is captured
   started: boolean; // saved a real answer or completed; drives the "Started only" table filter

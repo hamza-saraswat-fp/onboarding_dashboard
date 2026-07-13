@@ -73,6 +73,17 @@ export async function listModuleData(sessionIds?: string[]): Promise<WizardModul
   `;
 }
 
+// The number of steps in the onboarding wizard, taken as the count of distinct
+// module_numbers present across all sessions. Used as the denominator for
+// per-account progress so it reads against the whole wizard, not just the modules
+// an account happened to reach. 0 when there is no module data at all.
+export async function wizardStepCount(): Promise<number> {
+  const rows = await sql<{ n: number }[]>`
+    select count(distinct module_number)::int as n from wizard_module_data
+  `;
+  return rows[0]?.n ?? 0;
+}
+
 export async function listImportJobs(sessionIds?: string[]): Promise<ImportJob[]> {
   if (sessionIds) {
     return sql<ImportJob[]>`
