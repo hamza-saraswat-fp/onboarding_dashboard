@@ -40,13 +40,13 @@ const SALESFORCE_BASE_URL = process.env.SALESFORCE_BASE_URL ?? "https://fieldpul
 const SALESFORCE_ACCOUNT_ID_RE = /^001[A-Za-z0-9]{12,15}$/;
 
 // Pulls the Salesforce Account record id out of the opaque salesforceData blob,
-// if present and well-formed. As of 2026-07 the upstream Closed-Won automation
-// does NOT write this key, so this returns null for every live row today; the
-// moment Salesforce starts including `accountId` in the blob, the "View in
-// Salesforce" link lights up with no dashboard change. See the onboarding app:
-// salesforceData is pass-through jsonb minted by Salesforce, not the app.
+// if present and well-formed. The live snapshot carries it under
+// `salesforceAccountId` (present on ~283 of 287 rows as of 2026-07); `accountId`
+// is kept as a fallback in case the upstream automation ever emits that shorter
+// key instead. salesforceData is pass-through jsonb minted by Salesforce, not the
+// app, so validate the shape before trusting it.
 export function salesforceAccountIdFrom(salesforceData: Record<string, unknown>): string | null {
-  const raw = salesforceData?.accountId;
+  const raw = salesforceData?.salesforceAccountId ?? salesforceData?.accountId;
   return typeof raw === "string" && SALESFORCE_ACCOUNT_ID_RE.test(raw) ? raw : null;
 }
 
