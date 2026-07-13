@@ -4,6 +4,7 @@ import {
   getAccountDetail,
   salesforceAccountIdFrom,
   salesforceAccountUrl,
+  wizardProgress,
 } from "../lib/queries/account";
 
 // Session 1 is completed with all 9 modules complete and 3 successful jobs.
@@ -22,6 +23,7 @@ describe("getAccountDetail", () => {
     expect(account?.companyId).toBe("company-1");
     expect(account?.status).toBe("completed");
     expect(account?.progress).toBe(1);
+    expect(account?.totalSteps).toBe(9);
     expect(account?.moduleSelections).toHaveLength(9);
     expect(account?.submitResults).toHaveLength(3);
     expect(account?.submitResults.every((r) => r.status === "success")).toBe(true);
@@ -36,6 +38,24 @@ describe("getAccountDetail", () => {
 
   it("returns null for a malformed id without hitting the database", async () => {
     expect(await getAccountDetail("not-a-uuid")).toBeNull();
+  });
+});
+
+describe("wizardProgress", () => {
+  it("is completed modules over total wizard steps, not modules reached", () => {
+    // Finishing step 1 of a 6-step wizard reads ~17%, not 100%.
+    expect(wizardProgress(1, 6)).toBeCloseTo(1 / 6);
+    expect(wizardProgress(3, 9)).toBeCloseTo(1 / 3);
+  });
+
+  it("is 1 when every step is complete and 0 when none are", () => {
+    expect(wizardProgress(6, 6)).toBe(1);
+    expect(wizardProgress(0, 6)).toBe(0);
+  });
+
+  it("caps at 1 and guards a wizard with no steps", () => {
+    expect(wizardProgress(7, 6)).toBe(1);
+    expect(wizardProgress(3, 0)).toBe(0);
   });
 });
 

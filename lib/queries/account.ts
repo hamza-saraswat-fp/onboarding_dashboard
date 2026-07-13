@@ -1,7 +1,7 @@
 // Assembles one account's full onboarding detail for the drill-down view,
 // reusing the read-only session queries. Read-only.
 
-import { getSession, listModuleData, listImportJobs } from "./sessions";
+import { getSession, listModuleData, listImportJobs, wizardStepCount } from "./sessions";
 import type { ImportJob, WizardModuleData, WizardStatus } from "../types";
 
 export interface AccountDetail {
@@ -9,7 +9,8 @@ export interface AccountDetail {
   companyId: string;
   status: WizardStatus;
   currentModule: number;
-  progress: number; // 0..1 fraction of this account's modules that are complete
+  progress: number; // 0..1 completed modules over the whole wizard's step count
+  totalSteps: number; // total steps in the wizard, the progress denominator
   createdAt: Date;
   submittedAt: Date | null;
   expiresAt: Date;
@@ -56,6 +57,17 @@ export function salesforceAccountUrl(accountId: string | null): string | null {
   return `${SALESFORCE_BASE_URL.replace(/\/$/, "")}/lightning/r/Account/${accountId}/view`;
 }
 
+// Per-account onboarding progress as a 0..1 fraction of the WHOLE wizard: completed
+// modules over the total number of steps in the wizard, not over the modules an
+// account happened to reach. Dividing by modules-reached reads 100% for someone who
+// finished only the first step, which is misleading; anchoring to the full wizard
+// means only a genuinely finished account reads 100%. Capped at 1; 0 when the
+// wizard has no steps.
+export function wizardProgress(completeCount: number, totalSteps: number): number {
+  if (totalSteps <= 0) return 0;
+  return Math.min(1, completeCount / totalSteps);
+}
+
 export async function getAccountDetail(sessionId: string): Promise<AccountDetail | null> {
   // Guard malformed ids (a user-supplied URL segment) so a bad id returns
   // not-found instead of a Postgres uuid-cast error.
@@ -64,13 +76,14 @@ export async function getAccountDetail(sessionId: string): Promise<AccountDetail
   const session = await getSession(sessionId);
   if (!session) return null;
 
-  const [moduleSelections, submitResults] = await Promise.all([
+  const [moduleSelections, submitResults, totalSteps] = await Promise.all([
     listModuleData([sessionId]),
     listImportJobs([sessionId]),
+    wizardStepCount(),
   ]);
 
   const completeCount = moduleSelections.filter((m) => m.isComplete).length;
-  const progress = moduleSelections.length > 0 ? completeCount / moduleSelections.length : 0;
+  const progress = wizardProgress(completeCount, totalSteps);
 
   return {
     sessionId: session.id,
@@ -78,6 +91,7 @@ export async function getAccountDetail(sessionId: string): Promise<AccountDetail
     status: session.status,
     currentModule: session.currentModule,
     progress,
+    totalSteps,
     createdAt: session.createdAt,
     submittedAt: session.submittedAt,
     expiresAt: session.expiresAt,
@@ -96,9 +110,9 @@ export interface AccountRow {
   companyId: string;
   companyName: string | null;
   status: WizardStatus;
-  progress: number; // 0..1 fraction of this account's modules that are complete
+  progress: number; // 0..1 completed modules over the whole wizard's step count
   modulesComplete: number;
-  modulesTotal: number;
+  modulesTotal: number; // total steps in the wizard (same for every row)
   createdAt: Date;
   salesforceUrl: string | null; // Lightning link to the Account, when the id is captured
 }

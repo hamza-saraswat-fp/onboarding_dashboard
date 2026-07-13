@@ -26,6 +26,7 @@ function reviveAccount(raw: unknown): AccountDetailData {
     status: data.status as AccountDetailData["status"],
     currentModule: data.currentModule as number,
     progress: data.progress as number,
+    totalSteps: data.totalSteps as number,
     createdAt: toDate(data.createdAt),
     submittedAt: toDateOrNull(data.submittedAt),
     expiresAt: toDate(data.expiresAt),

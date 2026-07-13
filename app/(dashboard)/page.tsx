@@ -29,6 +29,7 @@ import type { BreakdownRow } from "@/components/summary/breakdown-table";
 import {
   salesforceAccountIdFrom,
   salesforceAccountUrl,
+  wizardProgress,
   type AccountRow,
 } from "@/lib/queries/account";
 import type { WizardSession } from "@/lib/types";
@@ -151,9 +152,9 @@ export default async function SummaryPage({
       companyId: s.companyId,
       companyName: name && name.trim() !== "" ? name : null,
       status: s.status,
-      progress: a && a.total > 0 ? a.complete / a.total : 0,
+      progress: wizardProgress(a?.complete ?? 0, totalSteps),
       modulesComplete: a?.complete ?? 0,
-      modulesTotal: a?.total ?? 0,
+      modulesTotal: totalSteps,
       createdAt: s.createdAt,
       salesforceUrl: salesforceAccountUrl(salesforceAccountIdFrom(s.salesforceData)),
     };
