@@ -76,11 +76,13 @@ export function AccountsTable({
   title = "Accounts",
   collapsible = false,
   defaultCollapsed = false,
+  startedFilter = false,
 }: {
   rows: AccountRow[];
   title?: string;
   collapsible?: boolean;
   defaultCollapsed?: boolean;
+  startedFilter?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(collapsible ? defaultCollapsed : false);
   const [query, setQuery] = useState("");
@@ -89,17 +91,19 @@ export function AccountsTable({
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<AccountRow | null>(null);
+  const [startedOnly, setStartedOnly] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return rows.filter((r) => {
+      if (startedOnly && !r.started) return false;
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
       if (q && !r.companyId.toLowerCase().includes(q) && !(r.companyName ?? "").toLowerCase().includes(q)) {
         return false;
       }
       return true;
     });
-  }, [rows, query, statusFilter]);
+  }, [rows, query, statusFilter, startedOnly]);
 
   const sorted = useMemo(() => {
     const dir = sortDir === "asc" ? 1 : -1;
@@ -196,6 +200,18 @@ export function AccountsTable({
                 </Button>
               ))}
             </div>
+            {startedFilter ? (
+              <Button
+                size="sm"
+                variant={startedOnly ? "default" : "outline"}
+                onClick={() => {
+                  setStartedOnly((v) => !v);
+                  setPage(0);
+                }}
+              >
+                Started only
+              </Button>
+            ) : null}
           </div>
         ) : null}
       </CardHeader>
