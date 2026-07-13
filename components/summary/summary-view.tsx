@@ -41,6 +41,7 @@ export function SummaryView({
   breakdownData,
   accountRows,
   testAccountRows,
+  hiddenAccountRows,
 }: {
   range: string;
   breakdown: string;
@@ -52,6 +53,7 @@ export function SummaryView({
   breakdownData: { dimension: string; rows: BreakdownRow[] } | null;
   accountRows: AccountRow[];
   testAccountRows: AccountRow[];
+  hiddenAccountRows: AccountRow[];
 }) {
   // Open insights automatically when a breakdown is active (the user asked for it).
   const [showInsights, setShowInsights] = useState(breakdownData !== null);
@@ -123,10 +125,14 @@ export function SummaryView({
         ) : null}
       </div>
 
-      <AccountsTable rows={accountRows} />
+      <AccountsTable rows={accountRows} startedFilter />
 
       {testAccountRows.length > 0 ? (
         <AccountsTable rows={testAccountRows} title="Test accounts" collapsible defaultCollapsed />
+      ) : null}
+
+      {hiddenAccountRows.length > 0 ? (
+        <AccountsTable rows={hiddenAccountRows} title="Hidden" collapsible defaultCollapsed />
       ) : null}
     </div>
   );

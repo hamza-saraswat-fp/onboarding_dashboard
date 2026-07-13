@@ -127,4 +127,5 @@ export interface AccountRow {
   modulesTotal: number; // modules that apply (own count once submitted, else whole wizard)
   createdAt: Date;
   salesforceUrl: string | null; // Lightning link to the Account, when the id is captured
+  started: boolean; // saved a real answer or completed; drives the "Started only" table filter
 }
