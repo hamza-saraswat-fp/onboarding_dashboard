@@ -79,22 +79,32 @@ describe("progressDenominator", () => {
 });
 
 describe("salesforceAccountIdFrom", () => {
-  it("reads a well-formed 18-char Account id from the blob", () => {
+  it("reads the live salesforceAccountId key from the blob", () => {
+    expect(salesforceAccountIdFrom({ salesforceAccountId: "001U100000wLXneIAG" })).toBe("001U100000wLXneIAG");
+  });
+
+  it("falls back to the accountId key when salesforceAccountId is absent", () => {
     expect(salesforceAccountIdFrom({ accountId: "001U100000wLXneIAG" })).toBe("001U100000wLXneIAG");
   });
 
-  it("accepts the 15-char form", () => {
-    expect(salesforceAccountIdFrom({ accountId: "001U100000wLXne" })).toBe("001U100000wLXne");
+  it("prefers salesforceAccountId over accountId when both are present", () => {
+    expect(
+      salesforceAccountIdFrom({ salesforceAccountId: "001U100000aPzl8IAC", accountId: "001U100000wLXneIAG" }),
+    ).toBe("001U100000aPzl8IAC");
   });
 
-  it("returns null when the key is absent (every live row today)", () => {
+  it("accepts the 15-char form", () => {
+    expect(salesforceAccountIdFrom({ salesforceAccountId: "001U100000wLXne" })).toBe("001U100000wLXne");
+  });
+
+  it("returns null when neither key is present", () => {
     expect(salesforceAccountIdFrom({ companyName: "B&B Glass Repair Plus, LLC" })).toBeNull();
   });
 
   it("rejects a value that is not a Salesforce Account id", () => {
-    expect(salesforceAccountIdFrom({ accountId: "192695" })).toBeNull();
-    expect(salesforceAccountIdFrom({ accountId: "003U100000wLXneIAG" })).toBeNull(); // Contact, not Account
-    expect(salesforceAccountIdFrom({ accountId: 12345 })).toBeNull();
+    expect(salesforceAccountIdFrom({ salesforceAccountId: "192695" })).toBeNull();
+    expect(salesforceAccountIdFrom({ salesforceAccountId: "003U100000wLXneIAG" })).toBeNull(); // Contact, not Account
+    expect(salesforceAccountIdFrom({ salesforceAccountId: 12345 })).toBeNull();
   });
 });
 

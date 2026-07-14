@@ -248,36 +248,38 @@ export function AccountsTable({
                     >
                       <TableCell>
                         <div className="flex flex-col">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-medium text-foreground">{displayName(row)}</span>
-                            {row.salesforceUrl ? (
-                              <a
-                                href={row.salesforceUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                title="View in Salesforce"
-                                aria-label={`View ${displayName(row)} in Salesforce`}
-                                className="text-muted-foreground transition-colors hover:text-primary"
+                          {row.salesforceUrl ? (
+                            <a
+                              href={row.salesforceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => e.stopPropagation()}
+                              title={`View ${displayName(row)} in Salesforce`}
+                              aria-label={`View ${displayName(row)} in Salesforce`}
+                              className="inline-flex w-fit items-center gap-1.5 font-medium text-foreground transition-colors hover:text-primary hover:underline"
+                            >
+                              {displayName(row)}
+                              <svg
+                                width="13"
+                                height="13"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="shrink-0 opacity-70"
+                                aria-hidden
                               >
-                                <svg
-                                  width="13"
-                                  height="13"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  aria-hidden
-                                >
-                                  <path d="M15 3h6v6" />
-                                  <path d="M10 14 21 3" />
-                                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                                </svg>
-                              </a>
-                            ) : null}
-                          </div>
+                                <path d="M15 3h6v6" />
+                                <path d="M10 14 21 3" />
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                              </svg>
+                            </a>
+                          ) : (
+                            <span className="font-medium text-foreground">{displayName(row)}</span>
+                          )}
                           {row.companyName ? (
                             <span className="text-xs text-muted-foreground tabular-nums">{row.companyId}</span>
                           ) : null}
