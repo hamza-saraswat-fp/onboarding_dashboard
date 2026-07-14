@@ -8,14 +8,22 @@
 // prefix). A leading word boundary keeps real names like "Latest 5", "Contest 9",
 // or a plain "FP Plumbing" from matching.
 //
-// Some test accounts can't be caught by name (e.g. the typo "Teset 137"). Those
-// are listed by company id below, and more can be added without a code change
-// via the TEST_COMPANY_IDS env var (comma-separated company ids).
+// Some accounts can't be caught by name: a typo like "Teset 137", an internal
+// account whose name looks ordinary, or a link minted with an empty
+// salesforce_data blob, which carries no name at all. Those are listed by company
+// id below, and more can be added without a code change via the TEST_COMPANY_IDS
+// env var (comma-separated company ids).
 
 const TEST_RE = /\btest|\be2e\b|\bfp-(probe|fix)\b/i;
 
-// Known test accounts the name heuristic can't catch (typos, opaque ids).
-const TEST_ID_OVERRIDES = ["85273"]; // "Teset 137" (misspelled "Test")
+// Known non-genuine accounts the name heuristic can't catch (typos, opaque ids,
+// internal accounts). Confirmed against the live data before being added.
+const TEST_ID_OVERRIDES = [
+  "85273", // "Teset 137" (misspelled "Test")
+  "15359", // 1 link, empty salesforce_data blob: no name, no account id
+  "151589", // 2 links, empty salesforce_data blob: no name, no account id
+  "83425", // internal account, not a customer
+];
 
 function overrideIds(): Set<string> {
   const fromEnv = (process.env.TEST_COMPANY_IDS ?? "")

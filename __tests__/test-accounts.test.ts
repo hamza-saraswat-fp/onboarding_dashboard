@@ -24,6 +24,13 @@ describe("isTestAccount", () => {
   it("matches ids in the override list (names the heuristic can't catch)", () => {
     // "Teset 137" is a misspelling of Test; caught by the id override.
     expect(isTestAccount("85273", "Teset 137")).toBe(true);
+    // Links minted with an empty salesforce_data blob carry no name at all, so
+    // only the id can catch them.
+    expect(isTestAccount("15359", null)).toBe(true);
+    expect(isTestAccount("151589", null)).toBe(true);
+    // Internal account: an ordinary-looking name the heuristic would never match,
+    // so the id override has to win regardless of the name.
+    expect(isTestAccount("83425", "Ordinary Company Name")).toBe(true);
   });
 
   it("matches the internal FP-PROBE / FP-FIX probe and fixture accounts", () => {
