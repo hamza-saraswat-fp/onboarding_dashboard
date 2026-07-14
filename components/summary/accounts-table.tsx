@@ -67,6 +67,37 @@ function SortHeader({
   );
 }
 
+// A small on/off switch for the "Started only" view filter, shown at the top
+// right of the accounts list under the count. On by default so the list opens
+// focused on accounts that actually engaged; flip it off to see every link.
+function StartedToggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label="Show started accounts only"
+      onClick={onChange}
+      className="inline-flex items-center gap-2 text-sm"
+    >
+      <span className={checked ? "text-foreground" : "text-muted-foreground"}>Started only</span>
+      <span
+        className={cn(
+          "inline-flex h-5 w-9 shrink-0 items-center rounded-full px-0.5 transition-colors",
+          checked ? "bg-primary" : "bg-muted",
+        )}
+      >
+        <span
+          className={cn(
+            "inline-block size-4 rounded-full bg-white shadow-sm transition-transform duration-200",
+            checked ? "translate-x-4" : "translate-x-0",
+          )}
+        />
+      </span>
+    </button>
+  );
+}
+
 // The accounts list: one row per onboarding link. Client-side search, status
 // filtering, sorting, and pagination keep the whole set readable. Clicking a row
 // opens the detail drawer in place. Used for both the main list and, collapsed,
@@ -91,7 +122,10 @@ export function AccountsTable({
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<AccountRow | null>(null);
-  const [startedOnly, setStartedOnly] = useState(false);
+  // Default the started-only view on wherever the filter is offered (the main
+  // accounts list). Tables without the toggle (test / hidden) start off, so they
+  // keep showing every row.
+  const [startedOnly, setStartedOnly] = useState(startedFilter);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -146,7 +180,7 @@ export function AccountsTable({
   return (
     <Card>
       <CardHeader className="gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           {collapsible ? (
             <button
               type="button"
@@ -171,7 +205,18 @@ export function AccountsTable({
           ) : (
             <CardTitle>{title}</CardTitle>
           )}
-          <span className="text-sm text-muted-foreground tabular-nums">{countLabel}</span>
+          <div className="flex flex-col items-end gap-2">
+            <span className="text-sm text-muted-foreground tabular-nums">{countLabel}</span>
+            {startedFilter && !collapsed ? (
+              <StartedToggle
+                checked={startedOnly}
+                onChange={() => {
+                  setStartedOnly((v) => !v);
+                  setPage(0);
+                }}
+              />
+            ) : null}
+          </div>
         </div>
         {!collapsed ? (
           <div className="flex flex-wrap items-center gap-2">
@@ -200,18 +245,6 @@ export function AccountsTable({
                 </Button>
               ))}
             </div>
-            {startedFilter ? (
-              <Button
-                size="sm"
-                variant={startedOnly ? "default" : "outline"}
-                onClick={() => {
-                  setStartedOnly((v) => !v);
-                  setPage(0);
-                }}
-              >
-                Started only
-              </Button>
-            ) : null}
           </div>
         ) : null}
       </CardHeader>
