@@ -67,10 +67,19 @@ function SortHeader({
   );
 }
 
-// A small on/off switch for the "Started only" view filter, shown at the top
-// right of the accounts list under the count. On by default so the list opens
-// focused on accounts that actually engaged; flip it off to see every link.
-function StartedToggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+// A small on/off switch for the "Started only" view filter, shown at the right
+// end of the filter row, in line with the search and status filters. On by
+// default so the list opens focused on accounts that actually engaged; flip it
+// off to see every link.
+function StartedToggle({
+  checked,
+  onChange,
+  className,
+}: {
+  checked: boolean;
+  onChange: () => void;
+  className?: string;
+}) {
   return (
     <button
       type="button"
@@ -78,7 +87,7 @@ function StartedToggle({ checked, onChange }: { checked: boolean; onChange: () =
       aria-checked={checked}
       aria-label="Show started accounts only"
       onClick={onChange}
-      className="inline-flex items-center gap-2 text-sm"
+      className={cn("inline-flex items-center gap-2 text-sm", className)}
     >
       <span className={checked ? "text-foreground" : "text-muted-foreground"}>Started only</span>
       <span
@@ -180,7 +189,7 @@ export function AccountsTable({
   return (
     <Card>
       <CardHeader className="gap-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           {collapsible ? (
             <button
               type="button"
@@ -205,18 +214,7 @@ export function AccountsTable({
           ) : (
             <CardTitle>{title}</CardTitle>
           )}
-          <div className="flex flex-col items-end gap-2">
-            <span className="text-sm text-muted-foreground tabular-nums">{countLabel}</span>
-            {startedFilter && !collapsed ? (
-              <StartedToggle
-                checked={startedOnly}
-                onChange={() => {
-                  setStartedOnly((v) => !v);
-                  setPage(0);
-                }}
-              />
-            ) : null}
-          </div>
+          <span className="text-sm text-muted-foreground tabular-nums">{countLabel}</span>
         </div>
         {!collapsed ? (
           <div className="flex flex-wrap items-center gap-2">
@@ -245,6 +243,16 @@ export function AccountsTable({
                 </Button>
               ))}
             </div>
+            {startedFilter ? (
+              <StartedToggle
+                className="ml-auto"
+                checked={startedOnly}
+                onChange={() => {
+                  setStartedOnly((v) => !v);
+                  setPage(0);
+                }}
+              />
+            ) : null}
           </div>
         ) : null}
       </CardHeader>
