@@ -25,6 +25,7 @@ import { moduleDropOff } from "@/lib/metrics/modules";
 import { topSelectionsBySection } from "@/lib/metrics/selections";
 import { isTestAccount } from "@/lib/test-accounts";
 import { isHiddenAccount } from "@/lib/hidden-accounts";
+import { accountBucket } from "@/lib/account-bucket";
 import { SummaryView, type SummaryMetrics } from "@/components/summary/summary-view";
 import type { BreakdownRow } from "@/components/summary/breakdown-table";
 import {
@@ -79,19 +80,31 @@ export default async function SummaryPage({
     listImportJobs(),
   ]);
 
-  // Test accounts (auto-detected by name) and hidden accounts (a curated list of
-  // real accounts that should not count) are both kept out of every statistic and
-  // shown only in their own collapsed tables at the bottom.
+  // Test accounts (auto-detected by name), hidden accounts (a curated list of
+  // real accounts that should not count), and expired links are all kept out of
+  // every statistic and shown only in their own collapsed tables at the bottom.
   const nameOf = (s: WizardSession): string | null =>
     typeof s.salesforceData?.companyName === "string" ? s.salesforceData.companyName : null;
-  // Three-way split. Hidden takes precedence over test, so a company that would
-  // match both is counted once (as hidden). Everything else is a real session
-  // and drives every metric, the funnel, trends, breakdowns, and the main list.
-  const isHidden = (s: WizardSession) => isHiddenAccount(s.companyId);
-  const isTest = (s: WizardSession) => !isHidden(s) && isTestAccount(s.companyId, nameOf(s));
-  const hiddenSessions = allSessions.filter(isHidden);
-  const testSessions = allSessions.filter(isTest);
-  const realSessions = allSessions.filter((s) => !isHidden(s) && !isTest(s));
+  // Four-way split via one classifier. Precedence Hidden > Test > Expired > Real:
+  // only "real" sessions drive every metric, the funnel, trends, breakdowns, and
+  // the main list. The other three are excluded and shelved in their own tables.
+  // Expired is the wizard status, but an expired test account stays on the test
+  // shelf, so expiring links never disturbs the test set.
+  const hiddenSessions: WizardSession[] = [];
+  const testSessions: WizardSession[] = [];
+  const expiredSessions: WizardSession[] = [];
+  const realSessions: WizardSession[] = [];
+  for (const s of allSessions) {
+    const bucket = accountBucket({
+      hidden: isHiddenAccount(s.companyId),
+      test: isTestAccount(s.companyId, nameOf(s)),
+      status: s.status,
+    });
+    if (bucket === "hidden") hiddenSessions.push(s);
+    else if (bucket === "test") testSessions.push(s);
+    else if (bucket === "expired") expiredSessions.push(s);
+    else realSessions.push(s);
+  }
 
   // One "started" set drives every surface (KPIs, funnel, trends, breakdown):
   // a link counts as started once it saved a real answer (or completed). Built
@@ -171,6 +184,7 @@ export default async function SummaryPage({
     };
   };
   const accountRows: AccountRow[] = realSessions.map(toRow);
+  const expiredAccountRows: AccountRow[] = expiredSessions.map(toRow);
   const testAccountRows: AccountRow[] = testSessions.map(toRow);
   const hiddenAccountRows: AccountRow[] = hiddenSessions.map(toRow);
 
@@ -225,6 +239,7 @@ export default async function SummaryPage({
       trends={trends}
       breakdownData={breakdownData}
       accountRows={accountRows}
+      expiredAccountRows={expiredAccountRows}
       testAccountRows={testAccountRows}
       hiddenAccountRows={hiddenAccountRows}
     />

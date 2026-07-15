@@ -40,6 +40,7 @@ export function SummaryView({
   trends,
   breakdownData,
   accountRows,
+  expiredAccountRows,
   testAccountRows,
   hiddenAccountRows,
 }: {
@@ -52,6 +53,7 @@ export function SummaryView({
   trends: { weekly: TrendPoint[]; monthly: TrendPoint[] };
   breakdownData: { dimension: string; rows: BreakdownRow[] } | null;
   accountRows: AccountRow[];
+  expiredAccountRows: AccountRow[];
   testAccountRows: AccountRow[];
   hiddenAccountRows: AccountRow[];
 }) {
@@ -126,6 +128,11 @@ export function SummaryView({
       </div>
 
       <AccountsTable rows={accountRows} startedFilter />
+
+      {/* Expired links are excluded from every metric and shelved here. Shown
+          even when empty so the category is visibly in place; it fills in as
+          links are expired. */}
+      <AccountsTable rows={expiredAccountRows} title="Expired" collapsible defaultCollapsed />
 
       {testAccountRows.length > 0 ? (
         <AccountsTable rows={testAccountRows} title="Test accounts" collapsible defaultCollapsed />
