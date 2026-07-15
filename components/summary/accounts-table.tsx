@@ -18,11 +18,12 @@ function displayName(row: AccountRow): string {
   return row.companyName ?? row.companyId;
 }
 
+// No "Expired" filter: expired links are pulled out of the main list into their
+// own excluded shelf, so there are none here to filter to.
 const STATUS_FILTERS: { value: WizardStatus | "all"; label: string }[] = [
   { value: "all", label: "All" },
   { value: "in_progress", label: "In progress" },
   { value: "completed", label: "Completed" },
-  { value: "expired", label: "Expired" },
   { value: "submission_failed", label: "Failed" },
 ];
 

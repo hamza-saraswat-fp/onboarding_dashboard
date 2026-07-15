@@ -1,15 +1,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { WizardStatus } from "@/lib/types";
 
+// No "Expired" row: expired links are excluded from the counted set (shelved in
+// their own table), so among real accounts the expired count is always 0.
 const LIFECYCLE_ORDER: { key: WizardStatus; label: string; bar: string; dot: string }[] = [
   { key: "completed", label: "Completed", bar: "bg-green-500", dot: "bg-green-500" },
   { key: "in_progress", label: "In progress", bar: "bg-fp-cobalt", dot: "bg-fp-cobalt" },
-  { key: "expired", label: "Expired", bar: "bg-amber-500", dot: "bg-amber-500" },
   { key: "submission_failed", label: "Failed", bar: "bg-destructive", dot: "bg-destructive" },
 ];
 
 // Lifecycle mix as a single stacked bar plus a labeled legend with counts, so
-// "how many links finished vs stalled vs expired vs failed" reads at a glance.
+// "how many links finished vs stalled vs failed" reads at a glance.
 export function LifecycleCard({ lifecycle }: { lifecycle: Record<WizardStatus, number> }) {
   const total = LIFECYCLE_ORDER.reduce((sum, s) => sum + lifecycle[s.key], 0);
 
