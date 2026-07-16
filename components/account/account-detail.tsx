@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { OnboardingLink } from "./onboarding-link";
+import { JOB_LABELS } from "@/lib/job-labels";
 import type { AccountDetail as AccountDetailData } from "@/lib/queries/account";
 import type { ImportJobStatus, WizardStatus } from "@/lib/types";
 
@@ -14,19 +15,6 @@ const MODULE_LABELS: Record<string, string> = {
   customForms: "Custom forms",
   userSetup: "User setup",
   teamsSetup: "Teams setup",
-};
-
-const JOB_LABELS: Record<string, string> = {
-  company_settings: "Company settings",
-  estimates_invoices: "Estimates and invoices",
-  job_workflows: "Job workflows",
-  job_statuses: "Job statuses",
-  customer_tags: "Customer tags",
-  communication_templates: "Communication templates",
-  clearpath_triggers: "ClearPath triggers",
-  custom_forms: "Custom forms",
-  users: "Users",
-  teams: "Teams",
 };
 
 const STATUS_LABELS: Record<WizardStatus, string> = {

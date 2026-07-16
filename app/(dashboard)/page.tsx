@@ -26,6 +26,7 @@ import { topSelectionsBySection } from "@/lib/metrics/selections";
 import { isTestAccount } from "@/lib/test-accounts";
 import { isHiddenAccount } from "@/lib/hidden-accounts";
 import { accountBucket } from "@/lib/account-bucket";
+import { failedJobLabels } from "@/lib/job-labels";
 import { SummaryView, type SummaryMetrics } from "@/components/summary/summary-view";
 import type { BreakdownRow } from "@/components/summary/breakdown-table";
 import {
@@ -166,6 +167,14 @@ export default async function SummaryPage({
     if (m.isComplete) a.complete += 1;
     allAgg.set(m.sessionId, a);
   }
+  // Unscoped like allAgg above: the accounts list is every real account, not
+  // date-scoped, so a row's failed-import flag must not depend on the KPI range.
+  const importJobsBySession = new Map<string, typeof allImportJobs>();
+  for (const j of allImportJobs) {
+    const arr = importJobsBySession.get(j.sessionId) ?? [];
+    arr.push(j);
+    importJobsBySession.set(j.sessionId, arr);
+  }
   const toRow = (s: WizardSession): AccountRow => {
     const a = allAgg.get(s.id);
     const name = nameOf(s);
@@ -181,6 +190,7 @@ export default async function SummaryPage({
       createdAt: s.createdAt,
       salesforceUrl: salesforceAccountUrl(salesforceAccountIdFrom(s.salesforceData)),
       started: startedIdsAll.has(s.id),
+      failedImportJobs: failedJobLabels(importJobsBySession.get(s.id) ?? []),
     };
   };
   const accountRows: AccountRow[] = realSessions.map(toRow);
