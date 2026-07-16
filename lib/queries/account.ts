@@ -128,4 +128,5 @@ export interface AccountRow {
   createdAt: Date;
   salesforceUrl: string | null; // Lightning link to the Account, when the id is captured
   started: boolean; // saved a real answer or completed; drives the "Started only" table filter
+  failedImportJobs: string[]; // labels of submit-results jobs that failed, independent of `status`
 }

@@ -275,7 +275,9 @@ export function AccountsTable({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pageRows.map((row) => (
+                  {pageRows.map((row) => {
+                    const flagged = row.failedImportJobs.length > 0;
+                    return (
                     <TableRow
                       key={row.id}
                       tabIndex={0}
@@ -286,42 +288,70 @@ export function AccountsTable({
                           setSelected(row);
                         }
                       }}
-                      className="cursor-pointer outline-none focus-visible:bg-muted/50"
+                      className={cn(
+                        "cursor-pointer outline-none focus-visible:bg-muted/50",
+                        flagged && "border-l-2 border-l-destructive bg-destructive/5 hover:bg-destructive/10",
+                      )}
                     >
                       <TableCell>
                         <div className="flex flex-col">
-                          {row.salesforceUrl ? (
-                            <a
-                              href={row.salesforceUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              onKeyDown={(e) => e.stopPropagation()}
-                              title={`View ${displayName(row)} in Salesforce`}
-                              aria-label={`View ${displayName(row)} in Salesforce`}
-                              className="inline-flex w-fit items-center gap-1.5 font-medium text-foreground transition-colors hover:text-primary hover:underline"
-                            >
-                              {displayName(row)}
-                              <svg
-                                width="13"
-                                height="13"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="shrink-0 opacity-70"
-                                aria-hidden
+                          <div className="flex items-center gap-1.5">
+                            {row.salesforceUrl ? (
+                              <a
+                                href={row.salesforceUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                onKeyDown={(e) => e.stopPropagation()}
+                                title={`View ${displayName(row)} in Salesforce`}
+                                aria-label={`View ${displayName(row)} in Salesforce`}
+                                className="inline-flex w-fit items-center gap-1.5 font-medium text-foreground transition-colors hover:text-primary hover:underline"
                               >
-                                <path d="M15 3h6v6" />
-                                <path d="M10 14 21 3" />
-                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                              </svg>
-                            </a>
-                          ) : (
-                            <span className="font-medium text-foreground">{displayName(row)}</span>
-                          )}
+                                {displayName(row)}
+                                <svg
+                                  width="13"
+                                  height="13"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  className="shrink-0 opacity-70"
+                                  aria-hidden
+                                >
+                                  <path d="M15 3h6v6" />
+                                  <path d="M10 14 21 3" />
+                                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                </svg>
+                              </a>
+                            ) : (
+                              <span className="font-medium text-foreground">{displayName(row)}</span>
+                            )}
+                            {flagged ? (
+                              <span
+                                title={`${row.failedImportJobs.join(", ")} failed at submit`}
+                                aria-label={`${row.failedImportJobs.join(", ")} failed at submit`}
+                                className="inline-flex shrink-0 text-destructive"
+                              >
+                                <svg
+                                  width="14"
+                                  height="14"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  aria-hidden
+                                >
+                                  <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+                                  <path d="M12 9v4" />
+                                  <path d="M12 17h.01" />
+                                </svg>
+                              </span>
+                            ) : null}
+                          </div>
                           {row.companyName ? (
                             <span className="text-xs text-muted-foreground tabular-nums">{row.companyId}</span>
                           ) : null}
@@ -350,7 +380,8 @@ export function AccountsTable({
                         {formatDate(row.createdAt)}
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
