@@ -124,7 +124,7 @@ export function AccountDrawer({ selected, onClose }: { selected: DrawerAccount |
             <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Account</div>
             <div className="truncate text-lg font-semibold text-foreground">{displayName}</div>
             <div className="mt-1 flex items-center gap-2">
-              {account ? <StatusPill status={account.status} /> : null}
+              {account ? <StatusPill status={account.status} progress={account.progress} /> : null}
               {displayId && displayId !== displayName ? (
                 <span className="truncate text-xs text-muted-foreground">ID {displayId}</span>
               ) : null}
