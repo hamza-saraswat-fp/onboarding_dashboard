@@ -1,17 +1,21 @@
 import type { WizardStatus } from "@/lib/types";
+import { displayStatus, type DisplayStatus } from "@/lib/display-status";
 import { cn } from "@/lib/utils";
 
-const STATUS_META: Record<WizardStatus, { label: string; className: string }> = {
+const STATUS_META: Record<DisplayStatus, { label: string; className: string }> = {
   completed: { label: "Completed", className: "bg-green-50 text-green-700 ring-green-600/20" },
   in_progress: { label: "In progress", className: "bg-fp-cobalt/10 text-fp-cobalt ring-fp-cobalt/20" },
+  not_started: { label: "Not started", className: "bg-slate-100 text-slate-600 ring-slate-500/20" },
   expired: { label: "Expired", className: "bg-amber-50 text-amber-700 ring-amber-600/20" },
   submission_failed: { label: "Failed", className: "bg-destructive/10 text-destructive ring-destructive/20" },
 };
 
 // A small colored status chip, shared by the accounts table and the drawer header
-// so the lifecycle color mapping stays in one place.
-export function StatusPill({ status }: { status: WizardStatus }) {
-  const meta = STATUS_META[status];
+// so the lifecycle color mapping stays in one place. When progress is passed, an
+// in-progress account at 0% reads as "Not started" (see displayStatus).
+export function StatusPill({ status, progress }: { status: WizardStatus; progress?: number }) {
+  const key = progress === undefined ? status : displayStatus(status, progress);
+  const meta = STATUS_META[key];
   return (
     <span
       className={cn(

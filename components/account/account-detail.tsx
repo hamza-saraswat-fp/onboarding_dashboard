@@ -4,6 +4,7 @@ import { OnboardingLink } from "./onboarding-link";
 import { JOB_LABELS } from "@/lib/job-labels";
 import type { AccountDetail as AccountDetailData } from "@/lib/queries/account";
 import type { ImportJobStatus, WizardStatus } from "@/lib/types";
+import { displayStatus, type DisplayStatus } from "@/lib/display-status";
 
 const MODULE_LABELS: Record<string, string> = {
   generalInfo: "General info",
@@ -17,8 +18,9 @@ const MODULE_LABELS: Record<string, string> = {
   teamsSetup: "Teams setup",
 };
 
-const STATUS_LABELS: Record<WizardStatus, string> = {
+const STATUS_LABELS: Record<DisplayStatus, string> = {
   in_progress: "In progress",
+  not_started: "Not started",
   completed: "Completed",
   expired: "Expired",
   submission_failed: "Submission failed",
@@ -48,9 +50,13 @@ function formatTimestamp(date: Date | null): string {
   return new Date(date).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
 }
 
-function StatusBadge({ status }: { status: WizardStatus }) {
-  const variant = status === "completed" ? "default" : status === "submission_failed" ? "destructive" : "secondary";
-  return <Badge variant={variant}>{STATUS_LABELS[status]}</Badge>;
+function StatusBadge({ status, progress }: { status: WizardStatus; progress: number }) {
+  const key = displayStatus(status, progress);
+  if (key === "not_started") {
+    return <Badge className="bg-slate-100 text-slate-600 hover:bg-slate-100">{STATUS_LABELS.not_started}</Badge>;
+  }
+  const variant = key === "completed" ? "default" : key === "submission_failed" ? "destructive" : "secondary";
+  return <Badge variant={variant}>{STATUS_LABELS[key]}</Badge>;
 }
 
 function SubmitBadge({ status }: { status: ImportJobStatus }) {
@@ -82,7 +88,7 @@ export function AccountDetail({
             <h1 className="text-2xl font-semibold text-foreground">Account {account.companyId}</h1>
             <p className="text-sm text-muted-foreground">Session {account.sessionId}</p>
           </div>
-          <StatusBadge status={account.status} />
+          <StatusBadge status={account.status} progress={account.progress} />
         </div>
       ) : null}
 

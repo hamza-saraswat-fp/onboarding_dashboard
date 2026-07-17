@@ -358,7 +358,7 @@ export function AccountsTable({
                         </div>
                       </TableCell>
                       <TableCell>
-                        <StatusPill status={row.status} />
+                        <StatusPill status={row.status} progress={row.progress} />
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-2">
