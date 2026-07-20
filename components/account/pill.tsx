@@ -1,30 +1,36 @@
 import type { ReactNode } from "react";
+import { CircleCheck, CircleDashed, CircleDot, CircleX, Clock, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // The one soft status-chip style for the whole app: a rounded, tinted pill with
-// an inset ring and a leading dot. Every status-like label (lifecycle status,
-// per-module completion, submit results) renders through this so they share one
-// visual language. Tones map to the lifecycle palette used in the accounts table.
-export type PillTone = "success" | "info" | "neutral" | "warning" | "danger";
+// an inset ring and a leading lucide icon. Every status-like label (lifecycle
+// status, per-module completion, submit results) renders through this so they
+// share one visual language. Tones map to the lifecycle palette used in the
+// accounts table; successStrong is the filled dark green for submit-results
+// Success, deliberately distinct from the soft green Completed.
+export type PillTone = "success" | "successStrong" | "info" | "neutral" | "warning" | "danger";
 
-const TONE_CLASS: Record<PillTone, string> = {
-  success: "bg-green-50 text-green-700 ring-green-600/20",
-  info: "bg-fp-cobalt/10 text-fp-cobalt ring-fp-cobalt/20",
-  neutral: "bg-slate-100 text-slate-600 ring-slate-500/20",
-  warning: "bg-amber-50 text-amber-700 ring-amber-600/20",
-  danger: "bg-destructive/10 text-destructive ring-destructive/20",
+const TONE_META: Record<PillTone, { className: string; icon: LucideIcon }> = {
+  success: { className: "bg-green-50 text-green-700 ring-green-600/30", icon: CircleCheck },
+  successStrong: { className: "bg-green-700 text-white ring-green-800/40", icon: CircleCheck },
+  info: { className: "bg-fp-cobalt/10 text-fp-cobalt ring-fp-cobalt/30", icon: CircleDot },
+  neutral: { className: "bg-slate-100 text-slate-600 ring-slate-500/30", icon: CircleDashed },
+  warning: { className: "bg-amber-50 text-amber-700 ring-amber-600/30", icon: Clock },
+  danger: { className: "bg-destructive/10 text-destructive ring-destructive/30", icon: CircleX },
 };
 
 export function Pill({ tone, children, className }: { tone: PillTone; children: ReactNode; className?: string }) {
+  const meta = TONE_META[tone];
+  const Icon = meta.icon;
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset",
-        TONE_CLASS[tone],
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ring-[1.5px] ring-inset",
+        meta.className,
         className,
       )}
     >
-      <span className="size-1.5 rounded-full bg-current" aria-hidden />
+      <Icon className="size-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
       {children}
     </span>
   );
