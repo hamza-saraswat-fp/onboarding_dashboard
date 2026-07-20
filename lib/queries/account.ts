@@ -7,6 +7,7 @@ import type { ImportJob, WizardModuleData, WizardStatus } from "../types";
 export interface AccountDetail {
   sessionId: string;
   companyId: string;
+  companyName: string | null; // Salesforce account name, when the snapshot carries one
   status: WizardStatus;
   currentModule: number;
   progress: number; // 0..1 completed modules over the account's applicable modules
@@ -15,6 +16,7 @@ export interface AccountDetail {
   submittedAt: Date | null;
   expiresAt: Date;
   onboardingUrl: string | null; // the link the customer used, when the token is present
+  salesforceUrl: string | null; // the account's Salesforce record, when the id is present
   salesforceData: Record<string, unknown>;
   moduleSelections: WizardModuleData[]; // final per-module form data
   submitResults: ImportJob[]; // per-module submit results at Complete Setup
@@ -48,6 +50,13 @@ const SALESFORCE_ACCOUNT_ID_RE = /^001[A-Za-z0-9]{12,15}$/;
 export function salesforceAccountIdFrom(salesforceData: Record<string, unknown>): string | null {
   const raw = salesforceData?.salesforceAccountId ?? salesforceData?.accountId;
   return typeof raw === "string" && SALESFORCE_ACCOUNT_ID_RE.test(raw) ? raw : null;
+}
+
+// The Salesforce account name captured in the snapshot, or null when it is
+// absent or blank. Used as the account's display name across the drill-down.
+export function companyNameFrom(salesforceData: Record<string, unknown>): string | null {
+  const name = salesforceData?.companyName;
+  return typeof name === "string" && name.trim() !== "" ? name : null;
 }
 
 // The Salesforce Lightning URL for one Account record, or null when the id is
@@ -100,6 +109,7 @@ export async function getAccountDetail(sessionId: string): Promise<AccountDetail
   return {
     sessionId: session.id,
     companyId: session.companyId,
+    companyName: companyNameFrom(session.salesforceData),
     status: session.status,
     currentModule: session.currentModule,
     progress,
@@ -108,6 +118,7 @@ export async function getAccountDetail(sessionId: string): Promise<AccountDetail
     submittedAt: session.submittedAt,
     expiresAt: session.expiresAt,
     onboardingUrl: onboardingUrlFor(session.accessToken),
+    salesforceUrl: salesforceAccountUrl(salesforceAccountIdFrom(session.salesforceData)),
     salesforceData: session.salesforceData,
     moduleSelections,
     submitResults,

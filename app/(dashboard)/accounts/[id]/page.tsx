@@ -22,7 +22,7 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
           Dashboard
         </Link>
         <span aria-hidden>/</span>
-        <span className="text-foreground">Account {account.companyId}</span>
+        <span className="text-foreground">{account.companyName ?? `Account ${account.companyId}`}</span>
       </nav>
 
       <AccountDetail account={account} />

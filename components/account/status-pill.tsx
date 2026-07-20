@@ -1,30 +1,20 @@
 import type { WizardStatus } from "@/lib/types";
 import { displayStatus, type DisplayStatus } from "@/lib/display-status";
-import { cn } from "@/lib/utils";
+import { Pill, type PillTone } from "./pill";
 
-const STATUS_META: Record<DisplayStatus, { label: string; className: string }> = {
-  completed: { label: "Completed", className: "bg-green-50 text-green-700 ring-green-600/20" },
-  in_progress: { label: "In progress", className: "bg-fp-cobalt/10 text-fp-cobalt ring-fp-cobalt/20" },
-  not_started: { label: "Not started", className: "bg-slate-100 text-slate-600 ring-slate-500/20" },
-  expired: { label: "Expired", className: "bg-amber-50 text-amber-700 ring-amber-600/20" },
-  submission_failed: { label: "Failed", className: "bg-destructive/10 text-destructive ring-destructive/20" },
+const STATUS_META: Record<DisplayStatus, { label: string; tone: PillTone }> = {
+  completed: { label: "Completed", tone: "success" },
+  in_progress: { label: "In progress", tone: "info" },
+  not_started: { label: "Not started", tone: "neutral" },
+  expired: { label: "Expired", tone: "warning" },
+  submission_failed: { label: "Failed", tone: "danger" },
 };
 
-// A small colored status chip, shared by the accounts table and the drawer header
-// so the lifecycle color mapping stays in one place. When progress is passed, an
+// The lifecycle status chip, shared by the accounts table and the drawer/detail
+// headers so the status mapping lives in one place. When progress is passed, an
 // in-progress account at 0% reads as "Not started" (see displayStatus).
 export function StatusPill({ status, progress }: { status: WizardStatus; progress?: number }) {
   const key = progress === undefined ? status : displayStatus(status, progress);
   const meta = STATUS_META[key];
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset",
-        meta.className,
-      )}
-    >
-      <span className="size-1.5 rounded-full bg-current" aria-hidden />
-      {meta.label}
-    </span>
-  );
+  return <Pill tone={meta.tone}>{meta.label}</Pill>;
 }
