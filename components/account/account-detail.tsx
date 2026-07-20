@@ -3,6 +3,7 @@ import { OnboardingLink } from "./onboarding-link";
 import { StatusPill } from "./status-pill";
 import { Pill, type PillTone } from "./pill";
 import { JOB_LABELS } from "@/lib/job-labels";
+import { HIDDEN_SELECTION_KEYS, prettifyAnswer } from "@/lib/selection-format";
 import type { AccountDetail as AccountDetailData } from "@/lib/queries/account";
 import type { ImportJobStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -38,7 +39,7 @@ function renderScalar(value: unknown): string {
     const parts = Object.entries(value).map(([k, v]) => `${formatKey(k)}: ${renderScalar(v)}`);
     return parts.length ? parts.join(" · ") : "-";
   }
-  return String(value);
+  return prettifyAnswer(String(value));
 }
 
 function formatTimestamp(date: Date | null): string {
@@ -74,14 +75,14 @@ function BoolValue({ on }: { on: boolean }) {
   );
 }
 
-// A right-hand value in a key/value row: a colored yes/no for booleans, a dash
-// for empty values, and a subtle chip for any other answer so it stands out from
-// its label.
+// A right-hand value in a key/value row: a colored yes/no for booleans, a muted
+// dash for empty values, and medium foreground text for any other answer, so the
+// written answers read like the yes/no rather than a separate chip style.
 function ScalarValue({ value }: { value: unknown }) {
   if (typeof value === "boolean") return <BoolValue on={value} />;
   const text = renderScalar(value);
   if (text === "-") return <span className="text-muted-foreground">-</span>;
-  return <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground">{text}</span>;
+  return <span className="font-medium text-foreground">{text}</span>;
 }
 
 function KeyValueRow({ label, value }: { label: string; value: unknown }) {
@@ -118,7 +119,7 @@ function SubmitBadge({ status }: { status: ImportJobStatus }) {
 // (like Communications' SMS / Email settings) break out into their own labeled
 // group of check/cross toggles so the chosen options are scannable.
 function ModuleSelections({ formData }: { formData: Record<string, unknown> }) {
-  const entries = Object.entries(formData ?? {});
+  const entries = Object.entries(formData ?? {}).filter(([key]) => !HIDDEN_SELECTION_KEYS.has(key));
   if (entries.length === 0) return <p className="text-xs text-muted-foreground">No data.</p>;
 
   const scalars = entries.filter(([, value]) => !isPlainObject(value));
