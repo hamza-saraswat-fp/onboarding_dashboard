@@ -12,11 +12,9 @@
 // One id per line with the resolution note. No customer names here: the repo is
 // public, so ids only.
 const RESOLVED_ID_DEFAULTS: string[] = [
-  "189329", // clearpath_triggers re-created manually
-  "195170", // clearpath_triggers handled manually
-  "195236", // clearpath_triggers handled manually
-  "198173", // clearpath_triggers handled manually
-  "198470", // clearpath_triggers handled manually
+  "189329", // clearpath_triggers (Installation - Standard) re-created manually
+  // Others left flagged on purpose until their ClearPath import is handled:
+  // 195170, 195236, 198173, 198470 still need the failed file re-uploaded.
 ];
 
 function resolvedIds(): Set<string> {
