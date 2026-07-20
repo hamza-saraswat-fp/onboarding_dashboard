@@ -109,7 +109,9 @@ function ToggleItem({ label, on }: { label: string; on: boolean }) {
 }
 
 function SubmitBadge({ status }: { status: ImportJobStatus }) {
-  const tone: PillTone = status === "success" ? "success" : status === "failed" ? "danger" : "neutral";
+  // successStrong (filled dark green) keeps submit-results Success visually
+  // distinct from the soft green lifecycle Completed.
+  const tone: PillTone = status === "success" ? "successStrong" : status === "failed" ? "danger" : "neutral";
   const label =
     status === "success" ? "Success" : status === "failed" ? "Failed" : status === "skipped" ? "Skipped" : status;
   return <Pill tone={tone}>{label}</Pill>;
