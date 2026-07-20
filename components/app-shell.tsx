@@ -12,11 +12,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Link
             href="/"
             className="flex items-center gap-3"
-            aria-label="FieldPulse onboarding dashboard home"
+            aria-label="FieldPulse onboarding app home"
           >
             <Image src="/fieldpulse-logo-white.png" alt="FieldPulse" width={130} height={28} priority />
-            <span className="hidden border-l border-white/25 pl-3 text-sm font-medium text-white/75 sm:inline">
-              Onboarding Dashboard
+            <span className="relative top-[3px] hidden border-l border-white/25 pl-3 text-lg font-semibold text-white sm:inline">
+              Onboarding App
             </span>
           </Link>
         </div>
