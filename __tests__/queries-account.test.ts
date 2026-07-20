@@ -1,6 +1,7 @@
 import { describe, it, expect, afterAll } from "vitest";
 import { sql } from "../lib/db";
 import {
+  companyNameFrom,
   getAccountDetail,
   progressDenominator,
   salesforceAccountIdFrom,
@@ -22,6 +23,7 @@ describe("getAccountDetail", () => {
     expect(account).not.toBeNull();
     expect(account?.sessionId).toBe(SESSION_1);
     expect(account?.companyId).toBe("company-1");
+    expect(account?.companyName).toBe("Acme HVAC");
     expect(account?.status).toBe("completed");
     expect(account?.progress).toBe(1);
     expect(account?.modulesTotal).toBe(9);
@@ -75,6 +77,18 @@ describe("progressDenominator", () => {
 
   it("falls back to the wizard length when a submitted account has no modules", () => {
     expect(progressDenominator(true, 0, 6)).toBe(6);
+  });
+});
+
+describe("companyNameFrom", () => {
+  it("reads the companyName key from the blob", () => {
+    expect(companyNameFrom({ companyName: "Acme HVAC" })).toBe("Acme HVAC");
+  });
+
+  it("returns null when the name is absent, blank, or not a string", () => {
+    expect(companyNameFrom({})).toBeNull();
+    expect(companyNameFrom({ companyName: "   " })).toBeNull();
+    expect(companyNameFrom({ companyName: 123 })).toBeNull();
   });
 });
 

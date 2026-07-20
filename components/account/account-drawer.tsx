@@ -23,6 +23,7 @@ function reviveAccount(raw: unknown): AccountDetailData {
   return {
     sessionId: data.sessionId as string,
     companyId: data.companyId as string,
+    companyName: (data.companyName ?? null) as string | null,
     status: data.status as AccountDetailData["status"],
     currentModule: data.currentModule as number,
     progress: data.progress as number,
@@ -31,6 +32,7 @@ function reviveAccount(raw: unknown): AccountDetailData {
     submittedAt: toDateOrNull(data.submittedAt),
     expiresAt: toDate(data.expiresAt),
     onboardingUrl: (data.onboardingUrl ?? null) as string | null,
+    salesforceUrl: (data.salesforceUrl ?? null) as string | null,
     salesforceData: (data.salesforceData ?? {}) as Record<string, unknown>,
     moduleSelections: ((data.moduleSelections as Record<string, unknown>[]) ?? []).map((m) => ({
       sessionId: m.sessionId as string,
