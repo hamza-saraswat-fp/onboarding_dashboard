@@ -25,6 +25,7 @@ import { moduleDropOff } from "@/lib/metrics/modules";
 import { topSelectionsBySection } from "@/lib/metrics/selections";
 import { isTestAccount } from "@/lib/test-accounts";
 import { isHiddenAccount } from "@/lib/hidden-accounts";
+import { isResolvedImportAccount } from "@/lib/resolved-imports";
 import { accountBucket } from "@/lib/account-bucket";
 import { failedJobLabels } from "@/lib/job-labels";
 import { SummaryView, type SummaryMetrics } from "@/components/summary/summary-view";
@@ -190,7 +191,12 @@ export default async function SummaryPage({
       createdAt: s.createdAt,
       salesforceUrl: salesforceAccountUrl(salesforceAccountIdFrom(s.salesforceData)),
       started: startedIdsAll.has(s.id),
-      failedImportJobs: failedJobLabels(importJobsBySession.get(s.id) ?? []),
+      // A human can mark an account's failed imports as handled outside the
+      // wizard (lib/resolved-imports.ts); those rows stop flagging in the list
+      // while the true job statuses stay visible in the account detail.
+      failedImportJobs: isResolvedImportAccount(s.companyId)
+        ? []
+        : failedJobLabels(importJobsBySession.get(s.id) ?? []),
     };
   };
   const accountRows: AccountRow[] = realSessions.map(toRow);
