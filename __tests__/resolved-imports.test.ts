@@ -4,6 +4,7 @@ import { isResolvedImportAccount } from "../lib/resolved-imports";
 describe("isResolvedImportAccount", () => {
   it("matches the curated defaults", () => {
     expect(isResolvedImportAccount("189329")).toBe(true);
+    expect(isResolvedImportAccount("197909")).toBe(true);
   });
 
   it("still flags accounts whose imports are not yet handled", () => {
