@@ -14,8 +14,9 @@
 const RESOLVED_ID_DEFAULTS: string[] = [
   "189329", // clearpath_triggers (Installation - Standard) re-created manually
   "197909", // clearpath_triggers (Default - Standard) re-created manually
+  "198470", // clearpath_triggers re-created manually (imports fixed by hand)
   // Others left flagged on purpose until their ClearPath import is handled:
-  // 195170, 195236, 198173, 198470 still need the failed file re-uploaded.
+  // 195170, 195236, 198173 still need the failed file re-uploaded.
 ];
 
 function resolvedIds(): Set<string> {
